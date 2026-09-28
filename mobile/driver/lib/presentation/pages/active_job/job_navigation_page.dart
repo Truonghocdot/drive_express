@@ -5,6 +5,7 @@ import '../../../api/driver_api.dart';
 import '../../driver_app_controller.dart';
 import '../../widgets/driver_feedback.dart';
 import '../../widgets/driver_goong_map.dart';
+import '../../theme/app_theme.dart';
 import 'chat_with_customer_page.dart';
 import 'update_status_page.dart';
 
@@ -85,6 +86,7 @@ class _JobNavigationPageState extends State<JobNavigationPage> {
             children: [
               DriverGoongMap(
                 mapKey: const String.fromEnvironment('GOONG_MAP_KEY'),
+                styleUrl: const String.fromEnvironment('GOONG_MAP_STYLE_URL'),
                 current: _currentCoordinate,
                 pickup: NavigationCoordinate(
                   latitude: offer.pickupLatitude,
@@ -393,12 +395,16 @@ class _NavigationSummary extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFE7EEF5),
-        borderRadius: BorderRadius.circular(6),
+        color: context.driverTokens.surfaceLow,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.driverTokens.divider),
       ),
       child: Row(
         children: [
-          const Icon(Icons.navigation_outlined, color: Color(0xFF215F9A)),
+          Icon(
+            Icons.navigation_outlined,
+            color: context.driverTokens.secondary,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

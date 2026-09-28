@@ -30,6 +30,13 @@ class DriverAppController extends ChangeNotifier {
   List<Map<String, dynamic>> vehicleTypes = const [];
   List<DriverOfferSummary> offers = const [];
   List<DriverJobSummary> history = const [];
+  DriverHistorySummary historySummary = const DriverHistorySummary(
+    completedCount: 0,
+    cancelledCount: 0,
+    netEarning: 0,
+  );
+  DriverHistoryFilter historyFilter = const DriverHistoryFilter();
+  bool historyHasNextPage = false;
   DriverWalletSummary? wallet;
   List<DriverBankAccountSummary> bankAccounts = const [];
   List<DriverNotificationSummary> notifications = const [];
@@ -417,13 +424,20 @@ class DriverAppController extends ChangeNotifier {
     );
   }
 
-  Future<void> loadHistory() => _guard(_loadHistory);
+  Future<void> loadHistory({DriverHistoryFilter? filter}) async {
+    if (filter != null) historyFilter = filter;
+    await _guard(_loadHistory);
+  }
 
   Future<void> _loadHistory() async {
     if (gateway is DriverHistoryGateway) {
-      history = await (gateway as DriverHistoryGateway).loadJobHistory(
+      final page = await (gateway as DriverHistoryGateway).loadJobHistoryPage(
         _session,
+        filter: historyFilter,
       );
+      history = page.jobs;
+      historySummary = page.summary;
+      historyHasNextPage = page.currentPage < page.lastPage;
     }
   }
 

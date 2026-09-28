@@ -138,6 +138,40 @@ void main() {
     expect(history.single.driverNetEarning, 15000);
   });
 
+  test('builds history filters and parses performance and wallet entries', () {
+    const filter = DriverHistoryFilter(
+      status: 'COMPLETED',
+      serviceType: 'DELIVERY',
+      query: 'abc',
+      page: 2,
+    );
+    expect(filter.toQuery(), {
+      'status': 'COMPLETED',
+      'service_type': 'DELIVERY',
+      'q': 'abc',
+      'page': '2',
+    });
+
+    final performance = DriverPerformance.fromJson({
+      'rating': 4.98,
+      'acceptance_rate': 96.5,
+      'completion_rate': 99.1,
+      'completed_count': 14,
+    });
+    final entry = DriverWalletEntry.fromJson({
+      'id': 1,
+      'direction': 'CREDIT',
+      'amount': 36080,
+      'balance_after': 195080,
+      'transaction_type': 'DRIVER_EARNING',
+    });
+
+    expect(performance.completedCount, 14);
+    expect(performance.acceptanceRate, 96.5);
+    expect(entry.transactionType, 'DRIVER_EARNING');
+    expect(entry.amount, 36080);
+  });
+
   test('generates unique RFC 4122 version 4 ids', () {
     final ids = List.generate(50, (_) => newRequestId());
     expect(ids.toSet().length, ids.length);

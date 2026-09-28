@@ -2,7 +2,10 @@
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Enums\RatingModerationStatus;
+use App\Models\Assignment;
 use App\Models\DriverProfile;
+use App\Models\Rating;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -46,6 +49,36 @@ class DriverProfileResource extends JsonResource
                     'captured_at' => $this->lastLocation->last_location_at->toISOString(),
                 ],
             ),
+            'performance' => $this->performance(),
+        ];
+    }
+
+    /** @return array<string, float|int|null|string> */
+    private function performance(): array
+    {
+        $rating = Rating::query()
+            ->where('reviewee_user_id', $this->user_id)
+            ->where('moderation_status', RatingModerationStatus::Visible->value)
+            ->avg('score');
+        $acceptedAssignments = Assignment::query()
+            ->where('driver_profile_id', $this->id)
+            ->whereIn('status', ['ACTIVE', 'COMPLETED', 'CANCELLED'])
+            ->count();
+        $completedAssignments = Assignment::query()
+            ->where('driver_profile_id', $this->id)
+            ->where('status', 'COMPLETED')
+            ->count();
+
+        return [
+            'rating' => $rating === null ? null : round((float) $rating, 2),
+            'acceptance_rate' => $this->offer_count === 0 || $this->acceptance_rate === null
+                ? null
+                : round((float) $this->acceptance_rate * 100, 1),
+            'completion_rate' => $acceptedAssignments === 0
+                ? null
+                : round($completedAssignments / $acceptedAssignments * 100, 1),
+            'completed_count' => $completedAssignments,
+            'updated_at' => $this->updated_at?->toISOString(),
         ];
     }
 }

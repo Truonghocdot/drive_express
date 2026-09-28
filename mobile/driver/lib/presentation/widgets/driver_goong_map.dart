@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../api/goong_navigation_api.dart';
+import '../theme/app_theme.dart';
 
 class DriverGoongMap extends StatefulWidget {
   const DriverGoongMap({
@@ -13,6 +14,7 @@ class DriverGoongMap extends StatefulWidget {
     this.route,
     this.height = 260,
     this.fullScreen = false,
+    this.styleUrl,
   });
 
   final String mapKey;
@@ -22,6 +24,7 @@ class DriverGoongMap extends StatefulWidget {
   final List<NavigationCoordinate>? route;
   final double height;
   final bool fullScreen;
+  final String? styleUrl;
 
   @override
   State<DriverGoongMap> createState() => _DriverGoongMapState();
@@ -69,8 +72,9 @@ class _DriverGoongMapState extends State<DriverGoongMap> {
     final map = SizedBox(
       height: widget.height,
       child: MapLibreMap(
-        styleString:
-            'https://tiles.goong.io/assets/goong_map_highlight.json?api_key=${Uri.encodeComponent(widget.mapKey)}',
+        styleString: widget.styleUrl?.isNotEmpty == true
+            ? widget.styleUrl!
+            : 'https://tiles.goong.io/assets/goong_map_highlight.json?api_key=${Uri.encodeComponent(widget.mapKey)}',
         initialCameraPosition: CameraPosition(
           target: LatLng(center.latitude, center.longitude),
           zoom: points.length == 1 ? 15 : 13,
@@ -202,13 +206,17 @@ class _MapMessage extends StatelessWidget {
       height: height,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFE7EEF5),
-        border: Border.all(color: const Color(0xFFC9D6E2)),
+        color: context.driverTokens.surfaceLow,
+        border: Border.all(color: context.driverTokens.divider),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
-          const Icon(Icons.map_outlined, color: Color(0xFF215F9A), size: 32),
+          Icon(
+            Icons.map_outlined,
+            color: context.driverTokens.secondary,
+            size: 32,
+          ),
           const SizedBox(width: 12),
           Expanded(child: Text(message)),
         ],

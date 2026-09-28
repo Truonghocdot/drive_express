@@ -67,7 +67,7 @@ class _DriverAppState extends State<DriverApp> {
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: DriverTheme.light(),
       darkTheme: DriverTheme.dark(),
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.dark,
       home: AnimatedBuilder(
         animation: controller,
         builder: (context, _) {

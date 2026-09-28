@@ -40,6 +40,8 @@ class DriverProfileSummary {
     required this.documents,
     required this.capabilities,
     this.reviewReason,
+    this.performance,
+    this.userName,
   });
   final String reviewStatus;
   final String availabilityStatus;
@@ -47,6 +49,8 @@ class DriverProfileSummary {
   final List<Map<String, dynamic>> vehicles;
   final List<Map<String, dynamic>> documents;
   final List<String> capabilities;
+  final DriverPerformance? performance;
+  final String? userName;
 
   factory DriverProfileSummary.fromJson(Map<String, dynamic> json) =>
       DriverProfileSummary(
@@ -64,7 +68,41 @@ class DriverProfileSummary {
             .where((item) => item['is_active'] == true)
             .map((item) => item['service_type'].toString())
             .toList(growable: false),
+        performance: json['performance'] is Map<String, dynamic>
+            ? DriverPerformance.fromJson(
+                json['performance'] as Map<String, dynamic>,
+              )
+            : null,
+        userName: (json['user'] as Map<String, dynamic>?)?['name']?.toString(),
       );
+}
+
+class DriverPerformance {
+  const DriverPerformance({
+    this.rating,
+    this.acceptanceRate,
+    this.completionRate,
+    required this.completedCount,
+    this.updatedAt,
+  });
+
+  final double? rating;
+  final double? acceptanceRate;
+  final double? completionRate;
+  final int completedCount;
+  final DateTime? updatedAt;
+
+  factory DriverPerformance.fromJson(Map<String, dynamic> json) {
+    return DriverPerformance(
+      rating: (json['rating'] as num?)?.toDouble(),
+      acceptanceRate: (json['acceptance_rate'] as num?)?.toDouble(),
+      completionRate: (json['completion_rate'] as num?)?.toDouble(),
+      completedCount: (json['completed_count'] as num?)?.toInt() ?? 0,
+      updatedAt: json['updated_at'] == null
+          ? null
+          : DateTime.tryParse(json['updated_at'].toString()),
+    );
+  }
 }
 
 abstract interface class DriverOperationsGateway {
@@ -261,17 +299,68 @@ class DriverWalletSummary {
     required this.balance,
     required this.reserved,
     required this.available,
+    this.entries = const [],
   });
 
   final double balance;
   final double reserved;
   final double available;
+  final List<DriverWalletEntry> entries;
 
   factory DriverWalletSummary.fromJson(Map<String, dynamic> json) {
     return DriverWalletSummary(
       balance: (json['balance'] as num).toDouble(),
       reserved: (json['reserved_withdrawal_amount'] as num).toDouble(),
       available: (json['available_balance'] as num).toDouble(),
+      entries: (json['entries'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(DriverWalletEntry.fromJson)
+          .toList(growable: false),
+    );
+  }
+}
+
+class DriverWalletEntry {
+  const DriverWalletEntry({
+    required this.id,
+    required this.direction,
+    required this.amount,
+    this.balanceAfter,
+    this.transactionType,
+    this.transactionStatus,
+    this.referenceType,
+    this.referenceId,
+    this.postedAt,
+    this.createdAt,
+  });
+
+  final int id;
+  final String direction;
+  final double amount;
+  final double? balanceAfter;
+  final String? transactionType;
+  final String? transactionStatus;
+  final String? referenceType;
+  final int? referenceId;
+  final DateTime? postedAt;
+  final DateTime? createdAt;
+
+  factory DriverWalletEntry.fromJson(Map<String, dynamic> json) {
+    return DriverWalletEntry(
+      id: (json['id'] as num).toInt(),
+      direction: json['direction'].toString(),
+      amount: (json['amount'] as num).toDouble(),
+      balanceAfter: (json['balance_after'] as num?)?.toDouble(),
+      transactionType: json['transaction_type']?.toString(),
+      transactionStatus: json['transaction_status']?.toString(),
+      referenceType: json['reference_type']?.toString(),
+      referenceId: (json['reference_id'] as num?)?.toInt(),
+      postedAt: json['posted_at'] == null
+          ? null
+          : DateTime.tryParse(json['posted_at'].toString()),
+      createdAt: json['created_at'] == null
+          ? null
+          : DateTime.tryParse(json['created_at'].toString()),
     );
   }
 }
@@ -357,6 +446,93 @@ class DriverJobSummary {
           : DateTime.parse(json['created_at'].toString()),
     );
   }
+}
+
+class DriverHistoryFilter {
+  const DriverHistoryFilter({
+    this.from,
+    this.to,
+    this.status,
+    this.serviceType,
+    this.query,
+    this.page = 1,
+  });
+
+  final DateTime? from;
+  final DateTime? to;
+  final String? status;
+  final String? serviceType;
+  final String? query;
+  final int page;
+
+  DriverHistoryFilter copyWith({
+    DateTime? from,
+    DateTime? to,
+    String? status,
+    String? serviceType,
+    String? query,
+    int? page,
+    bool clearFrom = false,
+    bool clearTo = false,
+    bool clearStatus = false,
+    bool clearServiceType = false,
+    bool clearQuery = false,
+  }) {
+    return DriverHistoryFilter(
+      from: clearFrom ? null : from ?? this.from,
+      to: clearTo ? null : to ?? this.to,
+      status: clearStatus ? null : status ?? this.status,
+      serviceType: clearServiceType ? null : serviceType ?? this.serviceType,
+      query: clearQuery ? null : query ?? this.query,
+      page: page ?? this.page,
+    );
+  }
+
+  Map<String, String> toQuery() => {
+    if (from != null) 'from': _date(from!),
+    if (to != null) 'to': _date(to!),
+    if (status != null && status!.isNotEmpty) 'status': status!,
+    if (serviceType != null && serviceType!.isNotEmpty)
+      'service_type': serviceType!,
+    if (query != null && query!.trim().isNotEmpty) 'q': query!.trim(),
+    'page': page.toString(),
+  };
+
+  String _date(DateTime value) => value.toIso8601String().substring(0, 10);
+}
+
+class DriverHistorySummary {
+  const DriverHistorySummary({
+    required this.completedCount,
+    required this.cancelledCount,
+    required this.netEarning,
+  });
+
+  final int completedCount;
+  final int cancelledCount;
+  final double netEarning;
+
+  factory DriverHistorySummary.fromJson(Map<String, dynamic> json) {
+    return DriverHistorySummary(
+      completedCount: (json['completed_count'] as num?)?.toInt() ?? 0,
+      cancelledCount: (json['cancelled_count'] as num?)?.toInt() ?? 0,
+      netEarning: (json['net_earning'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+class DriverHistoryPage {
+  const DriverHistoryPage({
+    required this.jobs,
+    required this.summary,
+    required this.currentPage,
+    required this.lastPage,
+  });
+
+  final List<DriverJobSummary> jobs;
+  final DriverHistorySummary summary;
+  final int currentPage;
+  final int lastPage;
 }
 
 class DriverBankAccountSummary {
@@ -542,6 +718,10 @@ abstract interface class DriverGateway {
 
 abstract interface class DriverHistoryGateway {
   Future<List<DriverJobSummary>> loadJobHistory(DriverSession session);
+  Future<DriverHistoryPage> loadJobHistoryPage(
+    DriverSession session, {
+    DriverHistoryFilter? filter,
+  });
 }
 
 class DriverApi
@@ -1040,15 +1220,36 @@ class DriverApi
 
   @override
   Future<List<DriverJobSummary>> loadJobHistory(DriverSession session) async {
+    return (await loadJobHistoryPage(session)).jobs;
+  }
+
+  @override
+  Future<DriverHistoryPage> loadJobHistoryPage(
+    DriverSession session, {
+    DriverHistoryFilter? filter,
+  }) async {
+    final query = filter?.toQuery() ?? const <String, String>{'page': '1'};
+    final uri = _uri(
+      session,
+      '/driver/history',
+    ).replace(queryParameters: query);
     final response = await _transport.send(
       method: 'GET',
-      uri: _uri(session, '/driver/history'),
+      uri: uri,
       token: session.token,
     );
     _assertSuccess(response);
-    return _listData(response)
+    final jobs = _listData(response)
         .map(DriverJobSummary.fromJson)
         .toList(growable: false);
+    final meta = response.body['meta'] as Map<String, dynamic>? ?? const {};
+    final summary = meta['summary'] as Map<String, dynamic>? ?? const {};
+    return DriverHistoryPage(
+      jobs: jobs,
+      summary: DriverHistorySummary.fromJson(summary),
+      currentPage: (meta['current_page'] as num?)?.toInt() ?? filter?.page ?? 1,
+      lastPage: (meta['last_page'] as num?)?.toInt() ?? 1,
+    );
   }
 
   @override

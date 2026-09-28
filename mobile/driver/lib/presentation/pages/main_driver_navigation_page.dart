@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../driver_app_controller.dart';
+import '../theme/app_theme.dart';
+import '../widgets/driver_shell.dart';
 import 'history/driver_history_page.dart';
 import 'home/driver_home_page.dart';
 import 'profile/driver_profile_page.dart';
@@ -8,6 +10,7 @@ import 'wallet/wallet_page.dart';
 
 class MainDriverNavigationPage extends StatefulWidget {
   const MainDriverNavigationPage({super.key, required this.controller});
+
   final DriverAppController controller;
 
   @override
@@ -27,26 +30,29 @@ class _MainDriverNavigationPageState extends State<MainDriverNavigationPage> {
       DriverProfilePage(controller: widget.controller),
     ];
     const titles = ['Hoạt động', 'Lịch sử', 'Thu nhập', 'Hồ sơ'];
+    final online = widget.controller.profile?.availabilityStatus == 'ONLINE';
+
     return Scaffold(
       extendBody: index == 0,
       extendBodyBehindAppBar: index == 0,
-      appBar: AppBar(
-        title: Text(titles[index]),
-        backgroundColor: index == 0 ? Colors.transparent : null,
-        surfaceTintColor: index == 0 ? Colors.transparent : null,
-        elevation: index == 0 ? 0 : null,
-      ),
+      appBar: index == 0
+          ? null
+          : DriverShellAppBar(
+              title: titles[index],
+              online: online,
+              onProfile: () => setState(() => index = 3),
+            ),
       body: IndexedStack(index: index, children: pages),
       bottomNavigationBar: NavigationBar(
-        backgroundColor: index == 0
-            ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.88)
-            : null,
+        backgroundColor: context.driverTokens.surfaceLow.withValues(
+          alpha: 0.95,
+        ),
         selectedIndex: index,
         onDestinationSelected: (value) => setState(() => index = value),
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
+            icon: Icon(Icons.near_me_outlined),
+            selectedIcon: Icon(Icons.near_me),
             label: 'Hoạt động',
           ),
           NavigationDestination(icon: Icon(Icons.history), label: 'Lịch sử'),

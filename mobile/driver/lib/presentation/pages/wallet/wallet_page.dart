@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:gal/gal.dart';
-import 'package:http/http.dart' as http;
 
 import '../../../api/driver_api.dart';
 import '../../driver_app_controller.dart';
+import '../../theme/app_theme.dart';
 import '../../widgets/driver_feedback.dart';
+import '../../widgets/driver_shell.dart';
 import 'withdraw_page.dart';
 
 class WalletPage extends StatefulWidget {
   const WalletPage({super.key, required this.controller});
+
   final DriverAppController controller;
 
   @override
@@ -17,6 +18,8 @@ class WalletPage extends StatefulWidget {
 }
 
 class _WalletPageState extends State<WalletPage> {
+  bool obscured = false;
+
   @override
   void initState() {
     super.initState();
@@ -32,76 +35,21 @@ class _WalletPageState extends State<WalletPage> {
     return RefreshIndicator(
       onRefresh: state.loadWallet,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF173F61),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Số dư ví tài xế',
-                  style: TextStyle(color: Color(0xFFCFE2F1)),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  wallet == null && state.busy
-                      ? 'Đang tải…'
-                      : '${wallet?.balance.toStringAsFixed(0) ?? '—'} VND',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  wallet == null && state.busy
-                      ? 'Đang đồng bộ số dư'
-                      : 'Khả dụng ${wallet?.available.toStringAsFixed(0) ?? '—'} VND',
-                  style: const TextStyle(color: Color(0xFFCFE2F1)),
-                ),
-              ],
-            ),
-          ),
+          _balanceCard(context, wallet, state),
           if (wallet case final current? when current.balance < 0) ...[
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.warning_amber_rounded,
-                    color: Theme.of(context).colorScheme.onErrorContainer,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Ví đang âm ${current.balance.abs().toStringAsFixed(0)} VND. '
-                      'Nạp tiền để có thể online và nhận chuyến.',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onErrorContainer,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            DriverErrorBanner(
+              message:
+                  'Ví đang âm ${current.balance.abs().toStringAsFixed(0)} VND. Nạp tiền để nhận chuyến.',
             ),
           ],
           if (state.error case final error?) ...[
             const SizedBox(height: 10),
             DriverErrorBanner(message: error),
           ],
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
@@ -134,11 +82,8 @@ class _WalletPageState extends State<WalletPage> {
             icon: const Icon(Icons.arrow_upward),
             label: const Text('Rút tiền'),
           ),
-          const SizedBox(height: 22),
-          Text(
-            'Tài khoản ngân hàng',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          const SizedBox(height: 24),
+          DriverSectionTitle('Tài khoản ngân hàng'),
           const SizedBox(height: 8),
           if (state.bankAccounts.isEmpty)
             const DriverEmptyState(
@@ -149,6 +94,7 @@ class _WalletPageState extends State<WalletPage> {
             ),
           for (final account in state.bankAccounts)
             Card(
+              margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
                 leading: const Icon(Icons.account_balance_outlined),
                 title: Text(account.bankCode),
@@ -158,6 +104,98 @@ class _WalletPageState extends State<WalletPage> {
                 ),
               ),
             ),
+          const SizedBox(height: 16),
+          DriverSectionTitle('Biến động gần đây'),
+          const SizedBox(height: 8),
+          if (wallet?.entries.isEmpty ?? true)
+            const DriverEmptyState(
+              icon: Icons.receipt_long_outlined,
+              title: 'Chưa có giao dịch',
+              message: 'Các khoản thu nhập và rút tiền sẽ xuất hiện tại đây.',
+            ),
+          for (final entry in wallet?.entries ?? const <DriverWalletEntry>[])
+            Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: Icon(
+                  entry.direction == 'CREDIT'
+                      ? Icons.south_west
+                      : Icons.north_east,
+                  color: entry.direction == 'CREDIT'
+                      ? context.driverTokens.primary
+                      : context.driverTokens.warning,
+                ),
+                title: Text(
+                  formatDriverValue(entry.transactionType ?? entry.direction),
+                ),
+                subtitle: Text(entry.createdAt?.toLocal().toString() ?? ''),
+                trailing: Text(
+                  '${entry.direction == 'CREDIT' ? '+' : '-'}${entry.amount.toStringAsFixed(0)} đ',
+                  style: TextStyle(
+                    color: entry.direction == 'CREDIT'
+                        ? context.driverTokens.primary
+                        : context.driverTokens.warning,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _balanceCard(
+    BuildContext context,
+    DriverWalletSummary? wallet,
+    DriverAppController state,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.driverTokens.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.driverTokens.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Số dư khả dụng',
+                  style: TextStyle(color: context.driverTokens.muted),
+                ),
+              ),
+              IconButton(
+                tooltip: obscured ? 'Hiện số dư' : 'Ẩn số dư',
+                onPressed: () => setState(() => obscured = !obscured),
+                icon: Icon(
+                  obscured
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            wallet == null && state.busy
+                ? 'Đang tải…'
+                : obscured
+                ? '••••••'
+                : '${wallet?.balance.toStringAsFixed(0) ?? '—'} VND',
+            style: Theme.of(context).textTheme.headlineLarge
+                ?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            wallet == null && state.busy
+                ? 'Đang đồng bộ số dư'
+                : 'Khả dụng ${obscured ? '••••' : '${wallet?.available.toStringAsFixed(0) ?? '—'} VND'}',
+            style: TextStyle(color: context.driverTokens.muted),
+          ),
         ],
       ),
     );
@@ -213,39 +251,34 @@ class _WalletPageState extends State<WalletPage> {
         accountName: name.text.trim(),
       );
     }
-    await Future.wait([
-      disposeTextControllerAfterRoute(bank),
-      disposeTextControllerAfterRoute(number),
-      disposeTextControllerAfterRoute(name),
-    ]);
+    bank.dispose();
+    number.dispose();
+    name.dispose();
   }
 
   Future<void> _topUp(BuildContext context) async {
-    final wallet = widget.controller.wallet;
-    final suggested = wallet != null && wallet.balance < 0
-        ? (wallet.balance.abs().ceil() < 10000
-              ? 10000
-              : wallet.balance.abs().ceil()).toString()
-        : '100000';
-    final amount = TextEditingController(text: suggested);
+    final amount = TextEditingController(text: '100000');
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => SingleChildScrollView(
+      builder: (context) => Padding(
         padding: EdgeInsets.fromLTRB(
-          16,
           20,
-          16,
-          MediaQuery.viewInsetsOf(context).bottom + 20,
+          8,
+          20,
+          MediaQuery.viewInsetsOf(context).bottom + 24,
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Nạp ví tài xế', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              'Nạp ví tài xế',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
             const SizedBox(height: 8),
-            const Text('Tạo mã VietQR, sau đó chuyển khoản đúng số tiền và nội dung.'),
-            const SizedBox(height: 14),
+            const Text('Tạo mã VietQR và chuyển khoản đúng số tiền.'),
+            const SizedBox(height: 16),
             TextField(
               controller: amount,
               keyboardType: TextInputType.number,
@@ -254,7 +287,7 @@ class _WalletPageState extends State<WalletPage> {
                 prefixIcon: Icon(Icons.payments_outlined),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             FilledButton.icon(
               onPressed: () => Navigator.pop(context, true),
               icon: const Icon(Icons.qr_code_2),
@@ -264,28 +297,19 @@ class _WalletPageState extends State<WalletPage> {
         ),
       ),
     );
-    if (confirmed != true || !mounted) {
-      await disposeTextControllerAfterRoute(amount);
+    if (confirmed != true) {
+      amount.dispose();
       return;
     }
     final value = double.tryParse(amount.text.replaceAll(',', '').trim());
-    if (value == null || value < 10000) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Số tiền nạp tối thiểu là 10.000 VND.')),
-      );
-      await disposeTextControllerAfterRoute(amount);
-      return;
-    }
+    amount.dispose();
+    if (value == null || value < 10000 || !mounted) return;
     final topup = await widget.controller.createTopup(value);
-    if (context.mounted && topup != null) await _showTopupCode(context, topup);
-    await disposeTextControllerAfterRoute(amount);
+    if (!mounted || topup == null) return;
+    await _showTopupCode(topup);
   }
 
-  Future<void> _showTopupCode(
-    BuildContext context,
-    DriverWalletTopupSummary topup,
-  ) async {
+  Future<void> _showTopupCode(DriverWalletTopupSummary topup) async {
     await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -297,50 +321,24 @@ class _WalletPageState extends State<WalletPage> {
               Text('Số tiền: ${topup.amount.toStringAsFixed(0)} VND'),
               if (topup.vietQrImageUrl case final imageUrl?) ...[
                 const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    imageUrl,
-                    fit: BoxFit.contain,
-                    loadingBuilder: (context, child, progress) => progress == null
-                        ? child
-                        : const SizedBox(
-                            height: 240,
-                            child: Center(child: CircularProgressIndicator()),
-                          ),
-                    errorBuilder: (_, _, _) => const Text(
-                      'Không tải được ảnh QR. Dùng payload bên dưới để chuyển khoản.',
-                    ),
-                  ),
+                Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) =>
+                      const Text('Không tải được ảnh QR.'),
                 ),
               ],
               const SizedBox(height: 8),
               Text('Nội dung chuyển khoản: ${topup.reference}'),
               const SizedBox(height: 12),
               SelectableText(topup.vietQrPayload),
-              const SizedBox(height: 8),
-              Text(
-                'Mã có hiệu lực đến ${topup.expiresAt.toLocal()}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
             ],
           ),
         ),
         actions: [
-          if (topup.vietQrImageUrl case final imageUrl?)
-            TextButton.icon(
-              onPressed: () => _saveQrImage(context, imageUrl, topup.reference),
-              icon: const Icon(Icons.download_outlined),
-              label: const Text('Lưu ảnh QR'),
-            ),
           TextButton.icon(
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: topup.vietQrPayload));
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Đã sao chép nội dung VietQR.')),
-                );
-              }
             },
             icon: const Icon(Icons.copy_outlined),
             label: const Text('Sao chép'),
@@ -349,44 +347,8 @@ class _WalletPageState extends State<WalletPage> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Đóng'),
           ),
-          TextButton(
-            onPressed: () async {
-              await widget.controller.loadWallet();
-              if (context.mounted) Navigator.pop(context);
-            },
-            child: const Text('Làm mới số dư'),
-          ),
         ],
       ),
     );
-  }
-
-  Future<void> _saveQrImage(
-    BuildContext context,
-    String imageUrl,
-    String reference,
-  ) async {
-    try {
-      final response = await http.get(Uri.parse(imageUrl));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw StateError('QR image request failed');
-      }
-      await Gal.putImageBytes(
-        response.bodyBytes,
-        name: 'vietqr_$reference',
-        album: 'Drive',
-      );
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã lưu ảnh QR vào thư viện.')),
-        );
-      }
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể lưu ảnh QR.')),
-        );
-      }
-    }
   }
 }
