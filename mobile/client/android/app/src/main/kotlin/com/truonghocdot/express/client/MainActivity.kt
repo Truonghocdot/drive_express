@@ -1,4 +1,4 @@
-package com.example.client
+package com.truonghocdot.express.client
 
 import io.flutter.embedding.android.FlutterActivity
 

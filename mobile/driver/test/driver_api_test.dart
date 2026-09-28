@@ -1,5 +1,6 @@
 import 'package:driver/api/api_transport.dart';
 import 'package:driver/api/driver_api.dart';
+import 'package:driver/api/push_token_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -27,24 +28,72 @@ void main() {
     expect(transport.calls[1].headers['Idempotency-Key'], 'accept-key');
   });
 
-  test('creates a driver wallet VietQR top-up through the driver endpoint', () async {
-    final transport = RecordingTransport();
-    final api = DriverApi(transport: transport);
-    const session = DriverSession(
+  test(
+    'creates a driver wallet VietQR top-up through the driver endpoint',
+    () async {
+      final transport = RecordingTransport();
+      final api = DriverApi(transport: transport);
+      const session = DriverSession(
+        baseUrl: 'http://localhost/api/v1',
+        token: 'driver-token',
+      );
+
+      final topup = await api.createTopup(
+        session: session,
+        amount: 200000,
+        idempotencyKey: 'driver-topup-key',
+      );
+
+      expect(topup.status, 'PENDING');
+      expect(transport.calls.single.uri.path, '/api/v1/driver/wallet/topups');
+      expect(
+        transport.calls.single.headers['Idempotency-Key'],
+        'driver-topup-key',
+      );
+    },
+  );
+
+  test('includes the FCM token in the driver login device context', () async {
+    final transport = LoginTransport();
+    final api = DriverApi(
+      transport: transport,
+      pushTokenProvider: FixedPushTokenProvider('driver-fcm-token'),
+    );
+
+    await api.login(
       baseUrl: 'http://localhost/api/v1',
-      token: 'driver-token',
+      phone: '+84900000000',
+      password: 'password',
     );
 
-    final topup = await api.createTopup(
-      session: session,
-      amount: 200000,
-      idempotencyKey: 'driver-topup-key',
-    );
-
-    expect(topup.status, 'PENDING');
-    expect(transport.calls.single.uri.path, '/api/v1/driver/wallet/topups');
-    expect(transport.calls.single.headers['Idempotency-Key'], 'driver-topup-key');
+    expect(transport.body?['push_token'], 'driver-fcm-token');
+    expect(transport.body?['app_type'], 'DRIVER_APP');
   });
+}
+
+class FixedPushTokenProvider extends PushTokenProvider {
+  FixedPushTokenProvider(this.value);
+
+  final String value;
+
+  @override
+  Future<String?> token() async => value;
+}
+
+class LoginTransport implements ApiTransport {
+  Map<String, dynamic>? body;
+
+  @override
+  Future<ApiResponse> send({
+    required String method,
+    required Uri uri,
+    required String token,
+    Map<String, dynamic>? body,
+    Map<String, String> headers = const {},
+  }) async {
+    this.body = body;
+    return ApiResponse(200, {'token': 'session-token'});
+  }
 }
 
 class RecordingTransport implements ApiTransport {

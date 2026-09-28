@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'api/driver_api.dart';
 import 'api/driver_realtime.dart';
 import 'api/goong_navigation_api.dart';
+import 'api/push_token_provider.dart';
 import 'api/session_store.dart';
 import 'presentation/driver_app.dart';
 
@@ -12,6 +13,8 @@ export 'presentation/driver_app.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   const sessionStore = SecureDriverSessionStore();
+  final pushTokenProvider = PushTokenProvider();
+  await pushTokenProvider.initialize();
   final savedToken = await sessionStore.readToken();
   final onboarding = await sessionStore.readOnboarding();
   final deviceId = await sessionStore.installationId();
@@ -23,7 +26,10 @@ Future<void> main() async {
 
   runApp(
     DriverApp(
-      gateway: DriverApi(deviceId: deviceId),
+      gateway: DriverApi(
+        deviceId: deviceId,
+        pushTokenProvider: pushTokenProvider,
+      ),
       goong: GoongNavigationApi(apiKey: goongApiKey),
       sessionStore: sessionStore,
       realtime: DriverRealtime(),

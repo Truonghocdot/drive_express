@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "430485477556",
+    "project_id": "drive-app-a31f9",
+    "storage_bucket": "drive-app-a31f9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:430485477556:android:53d2b88f6867a4fa285fe1",
+        "android_client_info": {
+          "package_name": "com.truonghocdot.express.driver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCG0FIEErtjlNaZ3K3ym1qDpBzVRBiRlPo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -27,6 +27,8 @@ use App\Http\Controllers\Api\V1\Driver\ServiceExecutionController;
 use App\Http\Controllers\Api\V1\Driver\VehicleController;
 use App\Http\Controllers\Api\V1\Driver\WithdrawalController;
 use App\Http\Controllers\Api\V1\IncidentController;
+use App\Http\Controllers\Api\V1\Internal\NotificationDispatchController;
+use App\Http\Controllers\Api\V1\Internal\RevokePushTokenController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\QuoteController;
@@ -48,6 +50,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
     Route::post('webhooks/sepay', SePayWebhookController::class);
+
+    Route::middleware('internal-service')->prefix('internal')->group(function (): void {
+        Route::get('notifications/{notification}/dispatch', NotificationDispatchController::class);
+        Route::post('devices/revoke-push-token', RevokePushTokenController::class);
+    });
 
     Route::prefix('auth')->group(function (): void {
         Route::post('register', RegisterController::class)

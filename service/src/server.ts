@@ -6,6 +6,9 @@ import { Server } from 'socket.io';
 
 import { WorkerAuthorizer } from './auth/workerAuthorizer.js';
 import { RedisEventConsumer } from './messaging/redisEventConsumer.js';
+import { FirebasePushSender } from './notifications/firebasePushSender.js';
+import { PushNotificationDispatcher } from './notifications/pushNotificationDispatcher.js';
+import { WorkerNotificationClient } from './notifications/workerNotificationClient.js';
 import { RoomGateway } from './realtime/roomGateway.js';
 
 const port = Number(process.env.SERVICE_PORT ?? 3000);
@@ -23,6 +26,11 @@ const io = new Server(server, {
   },
 });
 const authorizer = new WorkerAuthorizer(workerApiUrl);
+const pushSender = new FirebasePushSender();
+const pushDispatcher = new PushNotificationDispatcher(
+  new WorkerNotificationClient(workerApiUrl, process.env.REALTIME_INTERNAL_TOKEN ?? ''),
+  pushSender,
+);
 const gateway = new RoomGateway(
   io,
   (token, serviceRequestId) => authorizer.canJoin(token, serviceRequestId),
@@ -48,6 +56,7 @@ io.on('connection', (socket) => gateway.registerHandlers(socket));
 
 const handleEvent = async (event: Parameters<RoomGateway['publish']>[0]): Promise<void> => {
   gateway.publish(event);
+  await pushDispatcher.dispatch(event);
 };
 const redisConsumer = new RedisEventConsumer(redisUrl, eventChannel, handleEvent);
 const locationConsumer = new RedisEventConsumer(redisUrl, locationChannel, handleEvent);

@@ -1,5 +1,6 @@
 import 'package:client/api/api_transport.dart';
 import 'package:client/api/booking_api.dart';
+import 'package:client/api/push_token_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -58,6 +59,48 @@ void main() {
       expect(transport.calls[2].headers['Idempotency-Key'], 'cancel-key');
     },
   );
+
+  test('includes the FCM token in the login device context', () async {
+    final transport = LoginTransport();
+    final api = BookingApi(
+      transport: transport,
+      pushTokenProvider: FixedPushTokenProvider('customer-fcm-token'),
+    );
+
+    await api.login(
+      baseUrl: 'http://localhost/api/v1',
+      phone: '+84900000000',
+      password: 'password',
+    );
+
+    expect(transport.body?['push_token'], 'customer-fcm-token');
+    expect(transport.body?['app_type'], 'CUSTOMER_APP');
+  });
+}
+
+class FixedPushTokenProvider extends PushTokenProvider {
+  FixedPushTokenProvider(this.value);
+
+  final String value;
+
+  @override
+  Future<String?> token() async => value;
+}
+
+class LoginTransport implements ApiTransport {
+  Map<String, dynamic>? body;
+
+  @override
+  Future<ApiResponse> send({
+    required String method,
+    required Uri uri,
+    required String token,
+    Map<String, dynamic>? body,
+    Map<String, String> headers = const {},
+  }) async {
+    this.body = body;
+    return const ApiResponse(statusCode: 200, body: {'token': 'session-token'});
+  }
 }
 
 class RecordingTransport implements ApiTransport {

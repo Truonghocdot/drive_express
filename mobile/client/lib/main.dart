@@ -5,12 +5,15 @@ import 'api/booking_api.dart';
 import 'api/booking_realtime.dart';
 import 'api/client_location.dart';
 import 'api/goong_location_api.dart';
+import 'api/push_token_provider.dart';
 import 'api/session_store.dart';
 import 'presentation/client_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   const sessionStore = SecureBookingSessionStore();
+  final pushTokenProvider = PushTokenProvider();
+  await pushTokenProvider.initialize();
   final savedToken = await sessionStore.readToken();
   final deviceId = await sessionStore.installationId();
   const configuredBaseUrl = String.fromEnvironment('API_BASE_URL');
@@ -23,7 +26,10 @@ Future<void> main() async {
 
   runApp(
     BookingApp(
-      gateway: BookingApi(deviceId: deviceId),
+      gateway: BookingApi(
+        deviceId: deviceId,
+        pushTokenProvider: pushTokenProvider,
+      ),
       locationSource: DeviceClientLocationSource(),
       goong: GoongLocationApi(apiKey: goongApiKey),
       sessionStore: sessionStore,

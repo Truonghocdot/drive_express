@@ -20,7 +20,9 @@ export class RedisEventConsumer {
       const event = parseWorkerEvent(message);
 
       if (event) {
-        void this.onEvent(event);
+        void this.onEvent(event).catch((error: unknown) => {
+          console.error('Worker event handling failed:', error);
+        });
       }
     });
   }

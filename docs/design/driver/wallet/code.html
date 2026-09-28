@@ -1,0 +1,562 @@
+<!doctype html>
+<html class="dark" lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+      name="viewport"
+    />
+    <meta content="mobile_tab" name="shell-type" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-tertiary-fixed-variant": "#653e00",
+              primary: "#4edea3",
+              "error-container": "#93000a",
+              "on-secondary-fixed-variant": "#004e5c",
+              "on-primary-container": "#00422b",
+              "surface-container-low": "#161b29",
+              "on-secondary-container": "#00424e",
+              "on-tertiary-container": "#523200",
+              "on-surface-variant": "#bbcabf",
+              "on-error-container": "#ffdad6",
+              "inverse-surface": "#dde2f5",
+              "on-secondary-fixed": "#001f26",
+              "tertiary-fixed": "#ffddb8",
+              outline: "#86948a",
+              "secondary-fixed": "#acedff",
+              tertiary: "#ffb95f",
+              error: "#ffb4ab",
+              "on-primary": "#003824",
+              "on-primary-fixed": "#002113",
+              "on-primary-fixed-variant": "#005236",
+              "surface-variant": "#2f3543",
+              secondary: "#4cd7f6",
+              "on-secondary": "#003640",
+              "on-error": "#690005",
+              "outline-variant": "#3c4a42",
+              "primary-container": "#10b981",
+              "tertiary-container": "#e29100",
+              "on-tertiary": "#472a00",
+              surface: "#0d1320",
+              "primary-fixed": "#6ffbbe",
+              "secondary-fixed-dim": "#4cd7f6",
+              "surface-container-high": "#242a38",
+              background: "#0d1320",
+              "tertiary-fixed-dim": "#ffb95f",
+              "surface-dim": "#0d1320",
+              "secondary-container": "#03b5d3",
+              "on-tertiary-fixed": "#2a1700",
+              "primary-fixed-dim": "#4edea3",
+              "surface-container-highest": "#2f3543",
+              "on-background": "#dde2f5",
+              "inverse-on-surface": "#2a303f",
+              "surface-container-lowest": "#080e1b",
+              "surface-container": "#1a1f2d",
+              "surface-bright": "#333948",
+              "inverse-primary": "#006c49",
+              "on-surface": "#dde2f5",
+              "surface-tint": "#4edea3",
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "9999px",
+            },
+            spacing: {
+              "space-md": "1rem",
+              "space-xs": "0.25rem",
+              "space-lg": "1.5rem",
+              "gutter-mobile": "0.75rem",
+              "space-xl": "2rem",
+              margin: "1rem",
+              "space-sm": "0.5rem",
+              "margin-mobile": "0.75rem",
+              gutter: "1rem",
+            },
+            fontFamily: {
+              "body-md": ["Inter"],
+              "body-sm": ["Inter"],
+              "label-sm": ["Inter"],
+              "display-currency-mobile": ["Inter"],
+              "display-currency": ["Inter"],
+              "body-lg": ["Inter"],
+              "headline-xl": ["Inter"],
+              "label-md": ["Inter"],
+              "label-lg": ["Inter"],
+              "headline-lg": ["Inter"],
+              "headline-md": ["Inter"],
+            },
+            fontSize: {
+              "body-md": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+              "body-sm": ["12px", { lineHeight: "16px", fontWeight: "400" }],
+              "label-sm": [
+                "10px",
+                {
+                  lineHeight: "14px",
+                  letterSpacing: "0.05em",
+                  fontWeight: "700",
+                },
+              ],
+              "display-currency-mobile": [
+                "30px",
+                {
+                  lineHeight: "36px",
+                  letterSpacing: "-0.02em",
+                  fontWeight: "800",
+                },
+              ],
+              "display-currency": [
+                "38px",
+                {
+                  lineHeight: "44px",
+                  letterSpacing: "-0.03em",
+                  fontWeight: "800",
+                },
+              ],
+              "body-lg": ["16px", { lineHeight: "22px", fontWeight: "500" }],
+              "headline-xl": [
+                "28px",
+                {
+                  lineHeight: "34px",
+                  letterSpacing: "-0.02em",
+                  fontWeight: "700",
+                },
+              ],
+              "label-md": [
+                "12px",
+                {
+                  lineHeight: "16px",
+                  letterSpacing: "0.02em",
+                  fontWeight: "600",
+                },
+              ],
+              "label-lg": [
+                "14px",
+                {
+                  lineHeight: "18px",
+                  letterSpacing: "0.01em",
+                  fontWeight: "600",
+                },
+              ],
+              "headline-lg": [
+                "22px",
+                {
+                  lineHeight: "28px",
+                  letterSpacing: "-0.01em",
+                  fontWeight: "700",
+                },
+              ],
+              "headline-md": [
+                "18px",
+                { lineHeight: "24px", fontWeight: "600" },
+              ],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      @layer base {
+        html,
+        body {
+          width: 100%;
+          margin: 0;
+          padding: 0;
+        }
+        body {
+          overscroll-behavior: none;
+          background-color: #0d1320;
+        }
+        .pb-safe {
+          padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        .pt-safe {
+          padding-top: env(safe-area-inset-top, 0px);
+        }
+        main > :first-child {
+          margin-top: 0 !important;
+        }
+        main > :last-child {
+          margin-bottom: 0 !important;
+        }
+      }
+      ::-webkit-scrollbar {
+        display: none;
+      }
+    </style>
+    <style>
+      body {
+        min-height: max(884px, 100dvh);
+      }
+    </style>
+  </head>
+  <body
+    class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen"
+  >
+    <header
+      class="fixed top-0 w-full z-50 pt-safe bg-surface-container/85 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.45)]"
+    >
+      <div
+        class="px-gutter-mobile h-6 flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm"
+      >
+        <span class="font-label-md text-label-md text-on-surface">00:13</span>
+        <div class="flex items-center gap-space-xs">
+          <span class="material-symbols-outlined text-[14px]"
+            >signal_cellular_alt</span
+          ><span class="material-symbols-outlined text-[14px]">wifi</span
+          ><span class="material-symbols-outlined text-[14px]"
+            >battery_full</span
+          >
+        </div>
+      </div>
+      <div
+        class="h-16 px-gutter-mobile flex items-center justify-between gap-space-sm"
+      >
+        <div class="flex items-center gap-space-sm">
+          <div
+            class="flex items-center gap-space-xs px-space-sm py-space-xs rounded-full bg-surface-container-high"
+          >
+            <span
+              class="w-2 h-2 rounded-full bg-primary-container shadow-[0_0_8px_#10b981]"
+            ></span
+            ><span class="font-label-sm text-label-sm text-primary uppercase"
+              >Trực tuyến</span
+            >
+          </div>
+          <h1
+            class="font-headline-md text-headline-md text-on-surface tracking-tight truncate"
+          >
+            Ví Thu Nhập
+          </h1>
+        </div>
+        <div class="flex items-center gap-space-xs">
+          <button
+            aria-label="SOS khẩn cấp"
+            class="w-11 h-11 rounded-full flex items-center justify-center text-error bg-error-container/20 active:scale-95 transition-transform"
+          >
+            <span class="material-symbols-outlined text-[20px]">fmd_bad</span>
+          </button>
+          <div
+            class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"
+          >
+            <span class="material-symbols-outlined text-on-primary text-[18px]"
+              >person</span
+            >
+          </div>
+        </div>
+      </div>
+    </header>
+    <main
+      class="flex-1 flex flex-col relative w-full pt-[88px] pb-[88px] bg-surface"
+    >
+      <div
+        class="flex flex-col w-full px-gutter-mobile gap-space-md py-space-sm"
+      >
+        <!-- Driver Status & Income Target Bar -->
+
+        <!-- 1. Thẻ Ví Chính (Balance Hero Card) -->
+        <div
+          class="rounded-xl bg-surface-container p-space-md shadow-md flex flex-col gap-space-sm"
+        >
+          <div class="flex items-center justify-between">
+            <div
+              class="flex items-center gap-space-xs text-on-surface-variant font-label-md text-label-md"
+            >
+              <span class="material-symbols-outlined text-[18px] text-primary"
+                >account_balance_wallet</span
+              >
+              <span class="">Số dư khả dụng</span>
+              <button
+                id="toggle-balance-btn"
+                class="w-6 h-6 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-transform active:scale-90"
+                aria-label="Ẩn/hiện số dư"
+              >
+                <span
+                  id="eye-icon"
+                  class="material-symbols-outlined text-[16px]"
+                  >visibility</span
+                >
+              </button>
+            </div>
+            <span class="font-label-sm text-label-sm text-on-surface-variant"
+              >Chờ quyết toán:
+              <strong class="text-tertiary font-semibold"
+                >350.000 ₫</strong
+              ></span
+            >
+          </div>
+          <div class="flex items-baseline gap-space-xs">
+            <span
+              id="balance-value"
+              class="font-display-currency-mobile text-display-currency-mobile text-on-surface font-extrabold select-none"
+              >195.080</span
+            >
+            <span
+              class="font-headline-lg text-headline-lg text-primary font-bold"
+              >₫</span
+            >
+            <p
+              id="hidden-dots"
+              class="hidden font-display-currency-mobile text-display-currency-mobile text-on-surface select-none tracking-widest leading-none py-1"
+            >
+              ••••••••
+            </p>
+          </div>
+        </div>
+        <!-- 2. Cụm nút hành động chính (Quick Actions) -->
+        <div class="grid grid-cols-2 gap-space-sm">
+          <button
+            class="flex items-center justify-center gap-space-xs h-12 rounded-xl bg-primary-container text-on-primary font-label-lg active:scale-95 shadow-md shadow-primary-container/25 transition-transform"
+          >
+            <span class="material-symbols-outlined text-[20px]"
+              >north_east</span
+            >
+            <span class="font-bold">Rút tiền</span>
+          </button>
+          <button
+            class="flex items-center justify-center gap-space-xs h-12 rounded-xl bg-surface-container-high text-on-surface font-label-lg active:scale-95 transition-transform"
+          >
+            <span class="material-symbols-outlined text-[20px] text-secondary"
+              >south_west</span
+            >
+            <span class="font-semibold">Nạp ví</span>
+          </button>
+        </div>
+        <!-- 3. Thẻ Liên kết Ngân hàng (Bank Account Card) -->
+        <div class="flex flex-col gap-space-xs">
+          <div class="flex items-center justify-between px-space-xs">
+            <h2
+              class="font-label-lg text-label-lg text-on-surface font-semibold"
+            >
+              Tài khoản thụ hưởng
+            </h2>
+            <button
+              class="text-secondary font-label-sm text-label-sm active:opacity-75 flex items-center gap-0.5"
+            >
+              <span class="material-symbols-outlined text-[14px]"
+                >add_circle</span
+              >
+              <span class="">Thêm ngân hàng</span>
+            </button>
+          </div>
+          <div
+            class="flex items-center justify-between p-space-md rounded-xl bg-surface-container-low border border-outline-variant/30"
+          >
+            <div class="flex items-center gap-space-sm min-w-0">
+              <div
+                class="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center font-bold text-secondary text-label-sm shrink-0 border border-outline-variant/30"
+              >
+                MB
+              </div>
+              <div class="flex flex-col min-w-0">
+                <div class="flex items-center gap-space-xs">
+                  <span
+                    class="font-label-md text-label-md text-on-surface font-bold"
+                    >MBBank</span
+                  >
+                  <span
+                    class="font-mono text-body-sm text-on-surface-variant font-medium"
+                    >•••• 6868</span
+                  >
+                </div>
+                <span
+                  class="font-body-sm text-body-sm text-on-surface-variant truncate"
+                  >MAI VĂN TRƯỜNG</span
+                >
+              </div>
+            </div>
+            <button
+              class="font-label-sm text-label-sm text-secondary hover:underline active:opacity-80 shrink-0 pl-space-xs"
+            >
+              Đổi
+            </button>
+          </div>
+        </div>
+        <!-- 4. Lịch sử biến động số dư gần đây (Recent Wallet Transactions) -->
+        <div class="flex flex-col gap-space-xs">
+          <div class="flex items-center justify-between px-space-xs">
+            <h2
+              class="font-label-lg text-label-lg text-on-surface font-semibold"
+            >
+              Biến động hôm nay
+            </h2>
+            <button
+              class="font-label-sm text-label-sm text-secondary active:opacity-75"
+            >
+              Xem tất cả
+            </button>
+          </div>
+          <div class="flex flex-col gap-space-xs">
+            <div
+              class="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-low"
+            >
+              <div class="flex items-center gap-space-sm min-w-0">
+                <div
+                  class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0"
+                >
+                  <span
+                    class="material-symbols-outlined text-primary text-[18px]"
+                    >two_wheeler</span
+                  >
+                </div>
+                <div class="flex flex-col min-w-0">
+                  <span
+                    class="font-label-md text-label-md text-on-surface font-medium truncate"
+                    >Cuốc xe #DX-9821</span
+                  >
+                  <span
+                    class="font-body-sm text-body-sm text-on-surface-variant"
+                    >23:45</span
+                  >
+                </div>
+              </div>
+              <span
+                class="font-label-md text-label-md text-primary font-bold shrink-0 pl-space-xs"
+                >+36.080 ₫</span
+              >
+            </div>
+            <div
+              class="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-low"
+            >
+              <div class="flex items-center gap-space-sm min-w-0">
+                <div
+                  class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0"
+                >
+                  <span
+                    class="material-symbols-outlined text-primary text-[18px]"
+                    >local_taxi</span
+                  >
+                </div>
+                <div class="flex flex-col min-w-0">
+                  <span
+                    class="font-label-md text-label-md text-on-surface font-medium truncate"
+                    >Cuốc xe #GH-4190</span
+                  >
+                  <span
+                    class="font-body-sm text-body-sm text-on-surface-variant"
+                    >21:15</span
+                  >
+                </div>
+              </div>
+              <span
+                class="font-label-md text-label-md text-primary font-bold shrink-0 pl-space-xs"
+                >+29.000 ₫</span
+              >
+            </div>
+            <div
+              class="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-low"
+            >
+              <div class="flex items-center gap-space-sm min-w-0">
+                <div
+                  class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center shrink-0"
+                >
+                  <span
+                    class="material-symbols-outlined text-on-surface-variant text-[18px]"
+                    >account_balance</span
+                  >
+                </div>
+                <div class="flex flex-col min-w-0">
+                  <span
+                    class="font-label-md text-label-md text-on-surface font-medium truncate"
+                    >Rút về MBBank</span
+                  >
+                  <span
+                    class="font-body-sm text-body-sm text-on-surface-variant"
+                    >Hôm qua 16:30</span
+                  >
+                </div>
+              </div>
+              <span
+                class="font-label-md text-label-md text-on-surface font-semibold shrink-0 pl-space-xs"
+                >-500.000 ₫</span
+              >
+            </div>
+          </div>
+        </div>
+        <!-- Security Guarantee Footer Note -->
+        <div
+          class="flex items-center justify-center gap-1 py-space-xs text-on-surface-variant text-label-sm opacity-60"
+        >
+          <span class="material-symbols-outlined text-[13px]">lock</span>
+          <span class="">Bảo mật chuẩn PCI-DSS Level 1</span>
+        </div>
+      </div>
+      <script>
+        (function () {
+          const toggleBtn = document.getElementById("toggle-balance-btn");
+          const balanceVal = document.getElementById("balance-value");
+          const dotsVal = document.getElementById("hidden-dots");
+          const eyeIcon = document.getElementById("eye-icon");
+          let isHidden = false;
+
+          if (toggleBtn && balanceVal && dotsVal && eyeIcon) {
+            toggleBtn.addEventListener("click", function () {
+              isHidden = !isHidden;
+              if (isHidden) {
+                balanceVal.classList.add("hidden");
+                dotsVal.classList.remove("hidden");
+                eyeIcon.textContent = "visibility_off";
+              } else {
+                balanceVal.classList.remove("hidden");
+                dotsVal.classList.add("hidden");
+                eyeIcon.textContent = "visibility";
+              }
+            });
+          }
+        })();
+      </script>
+    </main>
+    <nav
+      class="fixed bottom-0 w-full z-50 pb-safe bg-surface-container/90 backdrop-blur-xl shadow-[0_-4px_24px_rgba(0,0,0,0.55)]"
+      data-active-classes="text-primary-container font-bold"
+    >
+      <div class="h-16 px-space-xs flex items-center justify-around">
+        <a
+          class="flex flex-col items-center justify-center min-w-[56px] min-h-[48px] gap-space-xs text-outline active:scale-95 transition-all"
+          data-path="hoat-dong"
+          href="#"
+          ><span class="material-symbols-outlined text-[24px]">near_me</span
+          ><span class="font-label-sm text-label-sm">Hoạt động</span></a
+        ><a
+          class="flex flex-col items-center justify-center min-w-[56px] min-h-[48px] gap-space-xs text-outline active:scale-95 transition-all"
+          data-path="lich-su"
+          href="#"
+          ><span class="material-symbols-outlined text-[24px]">history</span
+          ><span class="font-label-sm text-label-sm">Lịch sử</span></a
+        ><a
+          class="flex flex-col items-center justify-center min-w-[56px] min-h-[48px] gap-space-xs text-outline active:scale-95 transition-all"
+          data-path="vi-thu-nhap"
+          href="#"
+          ><span class="material-symbols-outlined text-[24px]"
+            >account_balance_wallet</span
+          ><span class="font-label-sm text-label-sm">Ví thu nhập</span></a
+        ><a
+          class="flex flex-col items-center justify-center min-w-[56px] min-h-[48px] gap-space-xs text-outline active:scale-95 transition-all"
+          data-path="ho-so"
+          href="#"
+          ><span class="material-symbols-outlined text-[24px]"
+            >account_circle</span
+          ><span class="font-label-sm text-label-sm">Hồ sơ</span></a
+        >
+      </div>
+    </nav>
+  </body>
+</html>

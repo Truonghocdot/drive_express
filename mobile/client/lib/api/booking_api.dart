@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import 'api_transport.dart';
+import 'push_token_provider.dart';
 import 'request_id.dart';
 
 enum ServiceKind {
@@ -304,8 +305,8 @@ class TrackingSummary {
     return TrackingSummary(
       requestId: json['id'] as String,
       status: json['status'] as String,
-      statusMeta: (json['status_meta'] as Map?)?.cast<String, dynamic>() ??
-          const {},
+      statusMeta:
+          (json['status_meta'] as Map?)?.cast<String, dynamic>() ?? const {},
       stops: (json['stops'] as List? ?? const [])
           .whereType<Map<String, dynamic>>()
           .toList(growable: false),
@@ -608,11 +609,15 @@ class BookingApi
         CustomerAccountGateway,
         BookingHistoryGateway,
         BookingTrackingGateway {
-  BookingApi({ApiTransport? transport, this.deviceId = 'customer-app-session'})
-    : _transport = transport ?? createApiTransport();
+  BookingApi({
+    ApiTransport? transport,
+    this.deviceId = 'customer-app-session',
+    this.pushTokenProvider,
+  }) : _transport = transport ?? createApiTransport();
 
   final ApiTransport _transport;
   final String deviceId;
+  final PushTokenProvider? pushTokenProvider;
   final _pendingOperations = <String, String>{};
 
   Future<void> _sendRetryable({
@@ -654,15 +659,20 @@ class BookingApi
     return response;
   }
 
-  Map<String, dynamic> _deviceContext() => {
-    'device_id': deviceId,
-    'app_type': 'CUSTOMER_APP',
-    'platform': kIsWeb
-        ? 'WEB'
-        : defaultTargetPlatform == TargetPlatform.iOS
-        ? 'IOS'
-        : 'ANDROID',
-  };
+  Future<Map<String, dynamic>> _deviceContext() async {
+    final pushToken = await pushTokenProvider?.token();
+
+    return {
+      'device_id': deviceId,
+      'app_type': 'CUSTOMER_APP',
+      'platform': kIsWeb
+          ? 'WEB'
+          : defaultTargetPlatform == TargetPlatform.iOS
+          ? 'IOS'
+          : 'ANDROID',
+      if (pushToken != null && pushToken.isNotEmpty) 'push_token': pushToken,
+    };
+  }
 
   @override
   Future<void> register({
@@ -688,7 +698,7 @@ class BookingApi
     final response = await _authPost(baseUrl, '/auth/phone/verify', {
       'phone': phone,
       'code': code,
-      ..._deviceContext(),
+      ...await _deviceContext(),
     });
     return _token(response);
   }
@@ -784,7 +794,7 @@ class BookingApi
       method: 'POST',
       uri: Uri.parse('${baseUrl.replaceFirst(RegExp(r'/$'), '')}/auth/login'),
       token: '',
-      body: {'phone': phone, 'password': password, ..._deviceContext()},
+      body: {'phone': phone, 'password': password, ...await _deviceContext()},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw BookingApiException.fromResponse(response);
@@ -865,7 +875,9 @@ class BookingApi
         'voucher_code': ?draft.voucherCode,
       },
     );
-    return _listData(response).map(QuoteSummary.fromJson).toList(growable: false);
+    return _listData(response)
+        .map(QuoteSummary.fromJson)
+        .toList(growable: false);
   }
 
   @override

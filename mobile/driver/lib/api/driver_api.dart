@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import 'api_transport.dart';
+import 'push_token_provider.dart';
 import 'request_id.dart';
 
 class DriverSession {
@@ -224,9 +225,11 @@ class DriverOfferSummary {
       pickupLongitude: (pickup['longitude'] as num).toDouble(),
       dropoffLatitude: (dropoff['latitude'] as num).toDouble(),
       dropoffLongitude: (dropoff['longitude'] as num).toDouble(),
-      passengerName: passenger?['name']?.toString() ??
+      passengerName:
+          passenger?['name']?.toString() ??
           rideBooking?['passenger_name']?.toString(),
-      passengerPhone: passenger?['phone']?.toString() ??
+      passengerPhone:
+          passenger?['phone']?.toString() ??
           rideBooking?['passenger_phone']?.toString(),
     );
   }
@@ -547,11 +550,15 @@ class DriverApi
         DriverSupportGateway,
         DriverOperationsGateway,
         DriverHistoryGateway {
-  DriverApi({ApiTransport? transport, this.deviceId = 'driver-app-session'})
-    : _transport = transport ?? createApiTransport();
+  DriverApi({
+    ApiTransport? transport,
+    this.deviceId = 'driver-app-session',
+    this.pushTokenProvider,
+  }) : _transport = transport ?? createApiTransport();
 
   final ApiTransport _transport;
   final String deviceId;
+  final PushTokenProvider? pushTokenProvider;
   final _pendingOperations = <String, String>{};
 
   Future<void> _sendRetryable({
@@ -600,12 +607,14 @@ class DriverApi
     String password,
     String appType,
   ) async {
+    final pushToken = await pushTokenProvider?.token();
     final response = await _postAuth(baseUrl, '/auth/login', {
       'phone': phone,
       'password': password,
       'device_id': deviceId,
       'app_type': appType,
       'platform': _platform,
+      if (pushToken != null && pushToken.isNotEmpty) 'push_token': pushToken,
     });
     final token = response.body['token'];
     if (token is! String || token.isEmpty) {
@@ -655,12 +664,14 @@ class DriverApi
     required String phone,
     required String code,
   }) async {
+    final pushToken = await pushTokenProvider?.token();
     final response = await _postAuth(baseUrl, '/auth/phone/verify', {
       'phone': phone,
       'code': code,
       'device_id': deviceId,
       'app_type': 'CUSTOMER_APP',
       'platform': _platform,
+      if (pushToken != null && pushToken.isNotEmpty) 'push_token': pushToken,
     });
     final token = response.body['token'];
     if (token is! String || token.isEmpty) {
