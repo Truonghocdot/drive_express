@@ -80,6 +80,11 @@ class _IncomingOrderDialogState extends State<IncomingOrderDialog> {
             'Thu nhập dự kiến ${offer.estimatedEarning.toStringAsFixed(0)} VND',
           ),
           Text('Khách thanh toán ${formatDriverValue(offer.paymentMethod)}'),
+          if (offer.passengerName case final name?) ...[
+            const SizedBox(height: 8),
+            Text('Người đi: $name'),
+            if (offer.passengerPhone case final phone?) Text('Liên hệ: $phone'),
+          ],
         ],
       ),
       actions: [

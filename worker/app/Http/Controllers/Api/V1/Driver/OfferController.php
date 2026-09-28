@@ -34,6 +34,7 @@ class OfferController extends Controller
                     'serviceRequest.stops',
                     'serviceRequest.vehicleType',
                     'serviceRequest.payment',
+                    'serviceRequest.rideBooking',
                 ])
                 ->latest('offered_at')
                 ->limit(50)

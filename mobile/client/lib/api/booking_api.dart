@@ -101,6 +101,10 @@ class BookingDraft {
     required this.passengerCount,
     this.voucherCode,
     this.scheduledAt,
+    this.vehicleTypeId,
+    this.vehicleTypeIds,
+    this.passengerName,
+    this.passengerPhone,
   });
 
   final ServiceKind service;
@@ -111,6 +115,10 @@ class BookingDraft {
   final int passengerCount;
   final String? voucherCode;
   final DateTime? scheduledAt;
+  final String? vehicleTypeId;
+  final List<String>? vehicleTypeIds;
+  final String? passengerName;
+  final String? passengerPhone;
 }
 
 class QuoteSummary {
@@ -124,6 +132,9 @@ class QuoteSummary {
     required this.distanceMeters,
     required this.durationSeconds,
     required this.expiresAt,
+    this.vehicleTypeId,
+    this.vehicleKey,
+    this.vehicleName,
   });
 
   final String id;
@@ -135,10 +146,14 @@ class QuoteSummary {
   final double distanceMeters;
   final int durationSeconds;
   final DateTime expiresAt;
+  final String? vehicleTypeId;
+  final String? vehicleKey;
+  final String? vehicleName;
 
   factory QuoteSummary.fromJson(Map<String, dynamic> json) {
     final pricing = json['pricing'] as Map<String, dynamic>;
     final route = json['route'] as Map<String, dynamic>;
+    final vehicle = json['vehicle_type'] as Map<String, dynamic>?;
 
     return QuoteSummary(
       id: json['id'] as String,
@@ -152,6 +167,9 @@ class QuoteSummary {
       distanceMeters: (route['distance_meters'] as num).toDouble(),
       durationSeconds: (route['duration_seconds'] as num).toInt(),
       expiresAt: DateTime.parse(json['expires_at'] as String),
+      vehicleTypeId: vehicle?['id']?.toString(),
+      vehicleKey: vehicle?['key']?.toString(),
+      vehicleName: vehicle?['name']?.toString(),
     );
   }
 }
@@ -533,6 +551,11 @@ abstract interface class BookingGateway {
 
   Future<QuoteSummary> createQuote(BookingSession session, BookingDraft draft);
 
+  Future<List<QuoteSummary>> createQuoteBatch(
+    BookingSession session,
+    BookingDraft draft,
+  );
+
   Future<ServiceRequestSummary> createServiceRequest({
     required BookingSession session,
     required QuoteSummary quote,
@@ -540,6 +563,8 @@ abstract interface class BookingGateway {
     required PayerChoice payer,
     required String idempotencyKey,
     String? recipientUserId,
+    String? passengerName,
+    String? passengerPhone,
   });
 
   Future<ServiceRequestSummary> cancelServiceRequest({
@@ -801,7 +826,7 @@ class BookingApi
       token: session.token,
       body: {
         'service_type': draft.service.apiValue,
-        'vehicle_type_id': session.vehicleTypeId,
+        'vehicle_type_id': draft.vehicleTypeId ?? session.vehicleTypeId,
         'booking_type': draft.scheduledAt == null ? 'NOW' : 'SCHEDULED',
         'scheduled_at': ?draft.scheduledAt?.toUtc().toIso8601String(),
         'pickup': draft.pickup.toJson(),
@@ -817,6 +842,33 @@ class BookingApi
   }
 
   @override
+  Future<List<QuoteSummary>> createQuoteBatch(
+    BookingSession session,
+    BookingDraft draft,
+  ) async {
+    final vehicleTypeIds = draft.vehicleTypeIds;
+    if (vehicleTypeIds == null || vehicleTypeIds.length != 2) {
+      throw const BookingApiException('Thiếu hai loại phương tiện để báo giá.');
+    }
+    final response = await _transport.send(
+      method: 'POST',
+      uri: _uri(session, '/quotes/batch'),
+      token: session.token,
+      body: {
+        'service_type': draft.service.apiValue,
+        'vehicle_type_ids': vehicleTypeIds,
+        'booking_type': draft.scheduledAt == null ? 'NOW' : 'SCHEDULED',
+        'scheduled_at': ?draft.scheduledAt?.toUtc().toIso8601String(),
+        'pickup': draft.pickup.toJson(),
+        'dropoff': draft.dropoff.toJson(),
+        'service_payload': {'passenger_count': draft.passengerCount},
+        'voucher_code': ?draft.voucherCode,
+      },
+    );
+    return _listData(response).map(QuoteSummary.fromJson).toList(growable: false);
+  }
+
+  @override
   Future<ServiceRequestSummary> createServiceRequest({
     required BookingSession session,
     required QuoteSummary quote,
@@ -824,6 +876,8 @@ class BookingApi
     required PayerChoice payer,
     required String idempotencyKey,
     String? recipientUserId,
+    String? passengerName,
+    String? passengerPhone,
   }) async {
     final path = quote.service == ServiceKind.delivery
         ? '/delivery/orders'
@@ -838,6 +892,8 @@ class BookingApi
         'payment_method': payment.apiValue,
         if (quote.service == ServiceKind.delivery) 'payer_type': payer.apiValue,
         'recipient_user_id': ?recipientUserId,
+        'passenger_name': ?passengerName,
+        'passenger_phone': ?passengerPhone,
       },
     );
 

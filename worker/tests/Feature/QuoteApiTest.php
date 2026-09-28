@@ -136,6 +136,55 @@ test('creates a drive car quote with the configured extra kilometre rate', funct
         ->and($response->json('data.service_type'))->toBe(ServiceType::Drive->value);
 });
 
+test('creates both drive quotes in one atomic batch', function () {
+    $bike = createQuoteCatalog(ServiceType::Drive, 'MOTORBIKE', 18_000, 5_000, 1);
+    $car = createQuoteCatalog(ServiceType::Drive, 'CAR_4_SEAT', 30_000, 10_000, 4);
+    $user = User::factory()->create();
+    $map = new FakeMapProvider(new RouteResult('fake-goong', 4_000, 900, null));
+    $this->app->instance(MapProvider::class, $map);
+    Sanctum::actingAs($user, ['customer:*']);
+
+    $payload = quotePayload($bike['vehicle'], ServiceType::Drive);
+    $payload['service_payload']['passenger_count'] = 1;
+    $payload['vehicle_type_ids'] = [$bike['vehicle']->public_id, $car['vehicle']->public_id];
+    unset($payload['vehicle_type_id']);
+
+    $response = $this->postJson('/api/v1/quotes/batch', $payload)->assertCreated();
+
+    expect($response->json('data'))->toHaveCount(2)
+        ->and(collect($response->json('data'))->pluck('vehicle_type.key')->sort()->values()->all())
+        ->toBe(['CAR_4_SEAT', 'MOTORBIKE'])
+        ->and($map->calls)->toHaveCount(2);
+    $this->assertDatabaseCount('quotes', 2);
+});
+
+test('delivery rejects a car vehicle type', function () {
+    $catalog = createQuoteCatalog(ServiceType::Delivery, 'CAR_4_SEAT', 30_000, 10_000, 4);
+    $user = User::factory()->create();
+    $this->app->instance(MapProvider::class, new FakeMapProvider(new RouteResult('fake', 1_000, 300, null)));
+    Sanctum::actingAs($user, ['customer:*']);
+
+    $this->postJson('/api/v1/quotes', quotePayload($catalog['vehicle']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('vehicle_type_id');
+    $this->assertDatabaseCount('quotes', 0);
+});
+
+test('batch quote does not persist a partial result when one vehicle has no pricing', function () {
+    $bike = createQuoteCatalog(ServiceType::Drive, 'MOTORBIKE', 18_000, 5_000, 1);
+    $car = createQuoteCatalog(ServiceType::Drive, 'CAR_4_SEAT', 30_000, 10_000, 4);
+    PricingRule::query()->whereKey($car['rule']->id)->update(['is_active' => false]);
+    $user = User::factory()->create();
+    $this->app->instance(MapProvider::class, new FakeMapProvider(new RouteResult('fake', 4_000, 900, null)));
+    Sanctum::actingAs($user, ['customer:*']);
+    $payload = quotePayload($bike['vehicle'], ServiceType::Drive);
+    $payload['vehicle_type_ids'] = [$bike['vehicle']->public_id, $car['vehicle']->public_id];
+    unset($payload['vehicle_type_id']);
+
+    $this->postJson('/api/v1/quotes/batch', $payload)->assertUnprocessable();
+    $this->assertDatabaseCount('quotes', 0);
+});
+
 test('creates a quote without requiring configured service areas', function () {
     $catalog = createQuoteCatalog(ServiceType::Delivery, 'MOTORBIKE', 18_000, 5_000);
     $user = User::factory()->create();

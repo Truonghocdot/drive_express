@@ -141,6 +141,28 @@ test('creates a drive booking with CASH without debiting a wallet', function () 
     $this->assertDatabaseHas('wallets', ['id' => $setup['wallet']->id, 'balance' => 0]);
 });
 
+test('stores proxy passenger details for a ride booking', function () {
+    $setup = phaseFourSetup(ServiceType::Drive, 0);
+    Sanctum::actingAs($setup['user'], ['customer:*']);
+
+    $response = $this->postJson('/api/v1/rides/bookings', [
+        'quote_id' => $setup['quote']->public_id,
+        'payment_method' => PaymentMethod::Cash->value,
+        'passenger_name' => 'Nguyễn Văn B',
+        'passenger_phone' => '0901234567',
+    ], ['Idempotency-Key' => 'proxy-ride-key'])->assertCreated();
+
+    expect($response->json('data.ride_booking.passenger_name'))->toBe('Nguyễn Văn B')
+        ->and($response->json('data.ride_booking.passenger_phone'))->toBe('0901234567');
+    $this->assertDatabaseHas('ride_bookings', [
+        'service_request_id' => ServiceRequest::query()
+            ->where('public_id', $response->json('data.id'))
+            ->value('id'),
+        'passenger_name' => 'Nguyễn Văn B',
+        'passenger_phone' => '0901234567',
+    ]);
+});
+
 test('creates a scheduled booking and does not start matching yet', function () {
     $setup = phaseFourSetup(ServiceType::Drive, 100_000, BookingType::Scheduled);
     Sanctum::actingAs($setup['user'], ['customer:*']);

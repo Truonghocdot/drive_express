@@ -8,16 +8,19 @@ import '../../client_app_controller.dart';
 import '../../widgets/app_feedback.dart';
 import '../../widgets/goong_map_preview.dart';
 import 'order_checkout_page.dart';
+import 'ride_quote_selection_page.dart';
 
 class CreateOrderPage extends StatefulWidget {
   const CreateOrderPage({
     super.key,
     required this.controller,
     required this.service,
+    this.isProxyBooking = false,
   });
 
   final ClientAppController controller;
   final ServiceKind service;
+  final bool isProxyBooking;
 
   @override
   State<CreateOrderPage> createState() => _CreateOrderPageState();
@@ -30,6 +33,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   final goodsType = TextEditingController(text: 'GENERAL');
   final weight = TextEditingController(text: '5');
   final passengers = TextEditingController(text: '1');
+  final passengerName = TextEditingController();
+  final passengerPhone = TextEditingController();
   final voucher = TextEditingController();
   GoongCoordinate _pickup = const GoongCoordinate(latitude: 0, longitude: 0);
   GoongCoordinate _dropoff = const GoongCoordinate(latitude: 0, longitude: 0);
@@ -54,6 +59,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       goodsType,
       weight,
       passengers,
+      passengerName,
+      passengerPhone,
       voucher,
     ]) {
       controller.dispose();
@@ -209,6 +216,31 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                     prefixIcon: Icon(Icons.people_outline),
                   ),
                 ),
+              if (!delivery && widget.isProxyBooking) ...[
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: passengerName,
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Nhập tên người đi.'
+                      : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Tên người đi',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: passengerPhone,
+                  keyboardType: TextInputType.phone,
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Nhập số điện thoại người đi.'
+                      : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Số điện thoại người đi',
+                    prefixIcon: Icon(Icons.phone_outlined),
+                  ),
+                ),
+              ],
               const SizedBox(height: 10),
               TextField(
                 controller: voucher,
@@ -218,7 +250,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                 ),
               ),
               const SizedBox(height: 10),
-              ListTile(
+              if (!delivery) ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 4),
                 leading: const Icon(Icons.schedule_outlined),
                 title: Text(
@@ -272,6 +304,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   }
 
   Future<void> _quote() async {
+    final delivery = widget.service == ServiceKind.delivery;
     if (!formKey.currentState!.validate()) return;
     final goong = widget.controller.goong;
     if (goong?.configured != true ||
@@ -306,10 +339,30 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
         weightKg: double.tryParse(weight.text.replaceAll(',', '.')) ?? 0,
         passengerCount: int.tryParse(passengers.text) ?? 1,
         voucherCode: voucher.text.trim().isEmpty ? null : voucher.text.trim(),
-        scheduledAt: scheduledAt,
+        scheduledAt: delivery ? null : scheduledAt,
+        vehicleTypeId: delivery
+            ? widget.controller.vehicleIdForKey('MOTORBIKE')
+            : null,
+        vehicleTypeIds: delivery
+            ? null
+            : [
+                widget.controller.vehicleIdForKey('MOTORBIKE'),
+                widget.controller.vehicleIdForKey('CAR_4_SEAT'),
+              ].whereType<String>().toList(growable: false),
+        passengerName: widget.isProxyBooking ? passengerName.text.trim() : null,
+        passengerPhone: widget.isProxyBooking ? passengerPhone.text.trim() : null,
       ),
     );
-    if (widget.controller.quote != null && mounted) {
+    if (widget.controller.error != null || !mounted) return;
+    if (widget.service == ServiceKind.drive &&
+        widget.controller.quotes.length > 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RideQuoteSelectionPage(controller: widget.controller),
+        ),
+      );
+    } else if (widget.controller.quote != null) {
       Navigator.push(
         context,
         MaterialPageRoute(

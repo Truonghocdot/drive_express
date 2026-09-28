@@ -28,7 +28,9 @@ class ClientAppController extends ChangeNotifier {
   BookingSession _session;
   List<VehicleOption> vehicles = const [];
   List<ServiceRequestSummary> history = const [];
-  QuoteSummary? quote;
+  List<QuoteSummary> quotes = const [];
+  QuoteSummary? selectedQuote;
+  BookingDraft? quoteDraft;
   ServiceRequestSummary? activeRequest;
   TrackingSummary? tracking;
   WalletSummary? wallet;
@@ -49,6 +51,12 @@ class ClientAppController extends ChangeNotifier {
 
   BookingSession get session => _session;
   bool get authenticated => _session.token.isNotEmpty;
+  QuoteSummary? get quote => selectedQuote;
+
+  String? vehicleIdForKey(String key) => vehicles
+      .where((vehicle) => vehicle.key == key)
+      .map((vehicle) => vehicle.id)
+      .firstOrNull;
 
   Future<void> prepareLocation() async {
     final source = locationSource;
@@ -212,15 +220,27 @@ class ClientAppController extends ChangeNotifier {
 
   void selectVehicle(String id) {
     _session = _session.copyWith(vehicleTypeId: id);
-    quote = null;
+    selectedQuote = null;
+    quotes = const [];
     notifyListeners();
   }
 
   Future<void> requestQuote(BookingDraft draft) async {
     await _guard(() async {
-      quote = await gateway.createQuote(_session, draft);
+      quoteDraft = draft;
+      quotes = draft.service == ServiceKind.drive
+          ? await gateway.createQuoteBatch(_session, draft)
+          : [await gateway.createQuote(_session, draft)];
+      selectedQuote = draft.service == ServiceKind.delivery && quotes.isNotEmpty
+          ? quotes.first
+          : null;
       _createKey = null;
     });
+  }
+
+  void selectQuote(QuoteSummary quote) {
+    selectedQuote = quote;
+    notifyListeners();
   }
 
   Future<void> createRequest({
@@ -228,7 +248,7 @@ class ClientAppController extends ChangeNotifier {
     required PayerChoice payer,
     String? recipientUserId,
   }) async {
-    final currentQuote = quote;
+    final currentQuote = selectedQuote;
     if (currentQuote == null) return;
     await _guard(() async {
       _createKey ??= newRequestId();
@@ -238,6 +258,8 @@ class ClientAppController extends ChangeNotifier {
         payment: payment,
         payer: payer,
         recipientUserId: recipientUserId,
+        passengerName: quoteDraft?.passengerName,
+        passengerPhone: quoteDraft?.passengerPhone,
         idempotencyKey: _createKey!,
       );
       _createKey = null;
@@ -362,7 +384,9 @@ class ClientAppController extends ChangeNotifier {
     _session = _session.copyWith(token: '', vehicleTypeId: '');
     vehicles = const [];
     history = const [];
-    quote = null;
+    quotes = const [];
+    selectedQuote = null;
+    quoteDraft = null;
     activeRequest = null;
     tracking = null;
     wallet = null;

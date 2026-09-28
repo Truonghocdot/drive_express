@@ -79,6 +79,8 @@ Route::prefix('v1')->group(function (): void {
         Route::post('wallet/topups', [WalletTopupController::class, 'store']);
         Route::post('quotes', QuoteController::class)
             ->middleware('throttle:quotes');
+        Route::post('quotes/batch', [QuoteController::class, 'batch'])
+            ->middleware('throttle:quotes');
         Route::post('delivery/orders', [DeliveryOrderController::class, 'store']);
         Route::post('rides/bookings', [RideBookingController::class, 'store']);
         Route::get('service-requests', ServiceRequestHistoryController::class);

@@ -172,6 +172,8 @@ class DriverOfferSummary {
     required this.pickupLongitude,
     required this.dropoffLatitude,
     required this.dropoffLongitude,
+    this.passengerName,
+    this.passengerPhone,
   });
 
   final String id;
@@ -188,6 +190,8 @@ class DriverOfferSummary {
   final double pickupLongitude;
   final double dropoffLatitude;
   final double dropoffLongitude;
+  final String? passengerName;
+  final String? passengerPhone;
 
   factory DriverOfferSummary.fromJson(Map<String, dynamic> json) {
     final serviceRequest = json['service_request'] as Map<String, dynamic>;
@@ -196,6 +200,8 @@ class DriverOfferSummary {
         .toList(growable: false);
     final pickup = stops.firstWhere((stop) => stop['type'] == 'PICKUP');
     final dropoff = stops.firstWhere((stop) => stop['type'] == 'DROPOFF');
+    final passenger = json['passenger'] as Map<String, dynamic>?;
+    final rideBooking = serviceRequest['ride_booking'] as Map<String, dynamic>?;
     return DriverOfferSummary(
       id: json['id'] as String,
       status: json['status'] as String,
@@ -218,6 +224,10 @@ class DriverOfferSummary {
       pickupLongitude: (pickup['longitude'] as num).toDouble(),
       dropoffLatitude: (dropoff['latitude'] as num).toDouble(),
       dropoffLongitude: (dropoff['longitude'] as num).toDouble(),
+      passengerName: passenger?['name']?.toString() ??
+          rideBooking?['passenger_name']?.toString(),
+      passengerPhone: passenger?['phone']?.toString() ??
+          rideBooking?['passenger_phone']?.toString(),
     );
   }
 
@@ -237,6 +247,8 @@ class DriverOfferSummary {
       pickupLongitude: pickupLongitude,
       dropoffLatitude: dropoffLatitude,
       dropoffLongitude: dropoffLongitude,
+      passengerName: passengerName,
+      passengerPhone: passengerPhone,
     );
   }
 }

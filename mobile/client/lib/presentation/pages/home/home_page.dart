@@ -4,7 +4,7 @@ import '../../../api/booking_api.dart';
 import '../../client_app_controller.dart';
 import '../../widgets/app_feedback.dart';
 import '../order/active_order_tracking_page.dart';
-import 'service_detail_page.dart';
+import '../order/create_order_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key, required this.controller});
@@ -89,13 +89,23 @@ class HomePage extends StatelessWidget {
                 icon: Icons.local_shipping_outlined,
                 title: 'Giao hàng',
                 subtitle: 'Gửi hàng nội thành',
-                onTap: () => _openService(context, ServiceKind.delivery),
+                onTap: () => _openOrder(context, ServiceKind.delivery),
               ),
               _ServiceTile(
                 icon: Icons.directions_car_outlined,
                 title: 'Đặt xe',
                 subtitle: 'Di chuyển theo yêu cầu',
-                onTap: () => _openService(context, ServiceKind.drive),
+                onTap: () => _openOrder(context, ServiceKind.drive),
+              ),
+              _ServiceTile(
+                icon: Icons.person_pin_circle_outlined,
+                title: 'Đặt hộ',
+                subtitle: 'Đặt chuyến cho người khác',
+                onTap: () => _openOrder(
+                  context,
+                  ServiceKind.drive,
+                  isProxyBooking: true,
+                ),
               ),
             ],
           ),
@@ -108,12 +118,19 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  void _openService(BuildContext context, ServiceKind service) {
+  void _openOrder(
+    BuildContext context,
+    ServiceKind service, {
+    bool isProxyBooking = false,
+  }) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            ServiceDetailPage(controller: controller, service: service),
+        builder: (_) => CreateOrderPage(
+          controller: controller,
+          service: service,
+          isProxyBooking: isProxyBooking,
+        ),
       ),
     );
   }

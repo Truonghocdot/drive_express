@@ -139,7 +139,7 @@ class ServiceRequestService
             if ($serviceType === ServiceType::Delivery) {
                 $this->createDeliveryOrder($serviceRequest, $quote, $data, $payer);
             } else {
-                $this->createRideBooking($serviceRequest, $quote);
+                $this->createRideBooking($serviceRequest, $quote, $data);
             }
 
             $quote->forceFill([
@@ -287,11 +287,13 @@ class ServiceRequestService
         ]);
     }
 
-    private function createRideBooking(ServiceRequest $request, Quote $quote): void
+    private function createRideBooking(ServiceRequest $request, Quote $quote, array $data): void
     {
         RideBooking::query()->create([
             'service_request_id' => $request->id,
             'passenger_count' => (int) ($quote->service_payload['passenger_count'] ?? 1),
+            'passenger_name' => $data['passenger_name'] ?? null,
+            'passenger_phone' => $data['passenger_phone'] ?? null,
             'route_version' => 1,
         ]);
     }

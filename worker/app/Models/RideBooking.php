@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'service_request_id',
     'passenger_count',
+    'passenger_name',
+    'passenger_phone',
     'started_at',
     'ended_at',
     'route_version',

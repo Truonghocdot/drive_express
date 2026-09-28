@@ -14,6 +14,8 @@ use App\Models\VehicleType;
 use App\Services\Pricing\PricingService;
 use App\Services\Pricing\VoucherPreviewService;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class QuoteService
@@ -33,6 +35,7 @@ class QuoteService
             ->where('public_id', $data['vehicle_type_id'])
             ->where('is_active', true)
             ->firstOrFail();
+        $this->validateServiceVehicle($serviceType, $bookingType, $vehicleType);
         $pickup = $this->coordinates($data['pickup']);
         $dropoff = $this->coordinates($data['dropoff']);
         /** @var array<string, mixed> $servicePayload */
@@ -86,6 +89,32 @@ class QuoteService
         return $quote->load(['vehicleType', 'pricingRule']);
     }
 
+    /** @return Collection<int, Quote> */
+    public function createBatch(User $user, array $data): Collection
+    {
+        $vehicleTypes = VehicleType::query()
+            ->whereIn('public_id', $data['vehicle_type_ids'])
+            ->where('is_active', true)
+            ->get();
+
+        if ($vehicleTypes->count() !== 2
+            || $vehicleTypes->pluck('unique_key')->sort()->values()->all() !== ['CAR_4_SEAT', 'MOTORBIKE']) {
+            throw ValidationException::withMessages([
+                'vehicle_type_ids' => ['Báo giá chuyến xe phải gồm xe máy và ô tô 4 chỗ.'],
+            ]);
+        }
+
+        return DB::transaction(function () use ($user, $data, $vehicleTypes): Collection {
+            return $vehicleTypes->map(function (VehicleType $vehicleType) use ($user, $data): Quote {
+                return $this->create($user, [
+                    ...$data,
+                    'vehicle_type_id' => $vehicleType->public_id,
+                    'service_type' => ServiceType::Drive->value,
+                ]);
+            })->values();
+        });
+    }
+
     private function coordinates(mixed $location): Coordinates
     {
         /** @var array<string, mixed> $location */
@@ -93,6 +122,31 @@ class QuoteService
             latitude: (float) $location['latitude'],
             longitude: (float) $location['longitude'],
         );
+    }
+
+    private function validateServiceVehicle(
+        ServiceType $serviceType,
+        BookingType $bookingType,
+        VehicleType $vehicleType,
+    ): void {
+        if ($serviceType === ServiceType::Delivery && $vehicleType->unique_key !== 'MOTORBIKE') {
+            throw ValidationException::withMessages([
+                'vehicle_type_id' => ['Giao hàng chỉ hỗ trợ xe máy.'],
+            ]);
+        }
+
+        if ($serviceType === ServiceType::Delivery && $bookingType === BookingType::Scheduled) {
+            throw ValidationException::withMessages([
+                'booking_type' => ['Giao hàng hiện chỉ hỗ trợ đặt ngay.'],
+            ]);
+        }
+
+        if ($serviceType === ServiceType::Drive
+            && ! in_array($vehicleType->unique_key, ['MOTORBIKE', 'CAR_4_SEAT'], true)) {
+            throw ValidationException::withMessages([
+                'vehicle_type_id' => ['Chuyến xe chỉ hỗ trợ xe máy hoặc ô tô 4 chỗ.'],
+            ]);
+        }
     }
 
     /**

@@ -4,6 +4,7 @@ import 'package:client/api/session_store.dart';
 import 'package:client/api/booking_realtime.dart';
 import 'package:client/api/goong_location_api.dart';
 import 'package:client/presentation/pages/order/create_order_page.dart';
+import 'package:client/presentation/pages/order/ride_quote_selection_page.dart';
 import 'package:client/presentation/pages/profile/notifications_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -55,7 +56,7 @@ void main() {
     expect(find.text('Giao hàng'), findsOneWidget);
     await tester.tap(find.text('Giao hàng'));
     await tester.pumpAndSettle();
-    expect(find.text('Xe máy'), findsOneWidget);
+    expect(find.byType(CreateOrderPage), findsOneWidget);
     expect(gateway.loginCalls, 1);
   });
 
@@ -76,21 +77,6 @@ void main() {
 
     expect(find.text('Trang chủ'), findsWidgets);
     await tester.tap(find.text('Giao hàng'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(
-      find.byKey(const Key('continue-service-button')),
-    );
-    expect(
-      tester
-          .widget<FilledButton>(
-            find.byKey(const Key('continue-service-button')),
-          )
-          .onPressed,
-      isNotNull,
-    );
-    tester
-        .widget<FilledButton>(find.byKey(const Key('continue-service-button')))
-        .onPressed!();
     await tester.pumpAndSettle();
     expect(find.byType(CreateOrderPage), findsOneWidget);
 
@@ -139,6 +125,51 @@ void main() {
 
     expect(find.text('Đã hủy'), findsOneWidget);
     expect(gateway.cancelCalls, 1);
+  });
+
+  testWidgets('ride flow opens parallel motorbike and car quotes', (tester) async {
+    await tester.pumpWidget(
+      BookingApp(
+        gateway: FakeBookingGateway(),
+        goong: TestGoongLocationApi(),
+        initialSession: const BookingSession(
+          baseUrl: 'http://localhost/api/v1',
+          token: 'test-token',
+          vehicleTypeId: 'vehicle-uuid',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Đặt xe'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CreateOrderPage), findsOneWidget);
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const Key('pickup-location-field')),
+        matching: find.byType(TextField),
+      ),
+      'Pickup',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const Key('dropoff-location-field')),
+        matching: find.byType(TextField),
+      ),
+      'Dropoff',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    await tester.drag(find.byType(ListView).last, const Offset(0, -500));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('quote-button')));
+    await tester.tap(find.byKey(const Key('quote-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(RideQuoteSelectionPage), findsOneWidget);
+    expect(find.text('Xe máy'), findsOneWidget);
+    expect(find.text('Ô tô 4 chỗ'), findsOneWidget);
   });
 
   testWidgets(
@@ -324,6 +355,42 @@ class FakeBookingGateway implements BookingGateway {
   }
 
   @override
+  Future<List<QuoteSummary>> createQuoteBatch(
+    BookingSession session,
+    BookingDraft draft,
+  ) async {
+    quoteCalls++;
+    return [
+      QuoteSummary(
+        id: 'bike-quote',
+        service: ServiceKind.drive,
+        grossFare: 18000,
+        voucherDiscount: 0,
+        customerPayable: 18000,
+        currency: 'VND',
+        distanceMeters: 2000,
+        durationSeconds: 600,
+        expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+        vehicleKey: 'MOTORBIKE',
+        vehicleName: 'Xe máy',
+      ),
+      QuoteSummary(
+        id: 'car-quote',
+        service: ServiceKind.drive,
+        grossFare: 30000,
+        voucherDiscount: 0,
+        customerPayable: 30000,
+        currency: 'VND',
+        distanceMeters: 2200,
+        durationSeconds: 540,
+        expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+        vehicleKey: 'CAR_4_SEAT',
+        vehicleName: 'Ô tô 4 chỗ',
+      ),
+    ];
+  }
+
+  @override
   Future<ServiceRequestSummary> createServiceRequest({
     required BookingSession session,
     required QuoteSummary quote,
@@ -331,6 +398,8 @@ class FakeBookingGateway implements BookingGateway {
     required PayerChoice payer,
     required String idempotencyKey,
     String? recipientUserId,
+    String? passengerName,
+    String? passengerPhone,
   }) async {
     createCalls++;
     return ServiceRequestSummary(

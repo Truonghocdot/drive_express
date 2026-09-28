@@ -33,7 +33,11 @@ class StoreQuoteRequest extends FormRequest
                 'uuid',
                 Rule::exists('vehicle_types', 'public_id')->where('is_active', true),
             ],
-            'booking_type' => ['required', Rule::enum(BookingType::class)],
+            'booking_type' => [
+                'required',
+                Rule::enum(BookingType::class),
+                Rule::prohibitedIf($isDelivery && $isScheduled),
+            ],
             'scheduled_at' => [
                 Rule::requiredIf($isScheduled),
                 Rule::prohibitedIf(! $isScheduled),

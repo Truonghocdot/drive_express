@@ -40,6 +40,8 @@ class ServiceRequestResource extends JsonResource
             ]),
             'ride_booking' => $this->whenLoaded('rideBooking', fn () => [
                 'passenger_count' => $this->rideBooking->passenger_count,
+                'passenger_name' => $this->rideBooking->passenger_name,
+                'passenger_phone' => $this->rideBooking->passenger_phone,
                 'route_version' => $this->rideBooking->route_version,
             ]),
             'payment' => $this->whenLoaded('payment', fn () => [

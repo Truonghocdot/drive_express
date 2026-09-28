@@ -34,6 +34,14 @@ class StoreRideBookingRequest extends FormRequest
         return [
             'quote_id' => ['required', 'uuid', Rule::exists('quotes', 'public_id')],
             'payment_method' => ['required', Rule::enum(PaymentMethod::class)],
+            'passenger_name' => ['nullable', 'required_with:passenger_phone', 'string', 'max:120'],
+            'passenger_phone' => [
+                'nullable',
+                'required_with:passenger_name',
+                'string',
+                'max:30',
+                'regex:/^[0-9+().\-\s]{8,30}$/',
+            ],
             'stops' => ['sometimes', 'array:pickup,dropoff'],
             'stops.pickup' => ['sometimes', 'array:note'],
             'stops.pickup.note' => ['nullable', 'string', 'max:1000'],

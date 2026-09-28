@@ -1,3 +1,5 @@
+import 'package:flutter/gestures.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
@@ -71,6 +73,14 @@ class _GoongMapPreviewState extends State<GoongMapPreview> {
             target: LatLng(center.latitude, center.longitude),
             zoom: 13,
           ),
+          gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+            Factory<EagerGestureRecognizer>(EagerGestureRecognizer.new),
+          },
+          scrollGesturesEnabled: true,
+          zoomGesturesEnabled: true,
+          rotateGesturesEnabled: true,
+          tiltGesturesEnabled: true,
+          dragEnabled: true,
           compassEnabled: false,
           logoEnabled: false,
           onMapCreated: (controller) => _map = controller,

@@ -22,7 +22,11 @@ class ActiveOrderTrackingPage extends StatelessWidget {
         final tracking = controller.tracking;
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Theo dõi dịch vụ'),
+            title: Text(
+              request == null
+                  ? 'Theo dõi dịch vụ'
+                  : 'Theo dõi ${_serviceTitle(request.service)}',
+            ),
             actions: [
               IconButton(
                 tooltip: 'Làm mới',
@@ -78,11 +82,23 @@ class ActiveOrderTrackingPage extends StatelessWidget {
                             Row(
                               children: [
                                 Expanded(
-                                  child: Text(
-                                    'Trạng thái hiện tại',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _serviceTitle(request.service),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium,
+                                      ),
+                                      Text(
+                                        'Trạng thái hiện tại',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall,
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 StatusBadge(request.status),
@@ -179,6 +195,10 @@ class ActiveOrderTrackingPage extends StatelessWidget {
     'DRIVER_ARRIVED',
     'IN_TRIP',
   }.contains(status);
+
+  String _serviceTitle(ServiceKind service) => service == ServiceKind.delivery
+      ? 'Đơn giao hàng'
+      : 'Chuyến xe';
 
   Future<void> _cancel(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -297,8 +317,8 @@ class _RoutePanel extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 190),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFE7EFEA),
-        border: Border.all(color: const Color(0xFFC8D7D0)),
+        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -306,7 +326,11 @@ class _RoutePanel extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.radio_button_checked, size: 18),
+              Icon(
+                Icons.radio_button_checked,
+                size: 18,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(width: 8),
               Expanded(child: Text(request.pickupAddress ?? 'Điểm đón')),
             ],
@@ -315,19 +339,26 @@ class _RoutePanel extends StatelessWidget {
             width: 2,
             height: 48,
             margin: const EdgeInsets.only(left: 8),
-            color: const Color(0xFF7A9E90),
+            color: Theme.of(context).colorScheme.outline,
           ),
           Row(
             children: [
-              const Icon(Icons.location_on, size: 18),
+              Icon(
+                Icons.location_on,
+                size: 18,
+                color: Theme.of(context).colorScheme.secondary,
+              ),
               const SizedBox(width: 8),
               Expanded(child: Text(request.dropoffAddress ?? 'Điểm đến')),
             ],
           ),
           const SizedBox(height: 28),
-          const Align(
+          Align(
             alignment: Alignment.centerRight,
-            child: Icon(Icons.near_me, color: Color(0xFF146B52)),
+            child: Icon(
+              Icons.near_me,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
         ],
       ),

@@ -191,8 +191,6 @@ class ProfilePage extends StatelessWidget {
                               ),
                             const SizedBox(height: 12),
                             Text('Nội dung: ${topup.reference}'),
-                            const SizedBox(height: 8),
-                            SelectableText(topup.vietQrPayload),
                           ],
                         ),
                       ),
