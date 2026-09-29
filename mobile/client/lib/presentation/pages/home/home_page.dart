@@ -91,7 +91,6 @@ class HomePage extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _PromoStrip(onTap: () => _comingSoon(context)),
           const SizedBox(height: 22),
           _SectionHeader(title: 'Điểm đến gần đây', action: 'Xóa lịch sử'),
           const SizedBox(height: 10),

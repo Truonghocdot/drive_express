@@ -2,17 +2,15 @@
 
 namespace App\Services\Loyalty;
 
-use App\Enums\DiscountType;
 use App\Models\LoyaltyAccount;
 use App\Models\LoyaltyReward;
 use App\Models\LoyaltyTransaction;
+use App\Models\Payment;
 use App\Models\ServiceRequest;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\Voucher;
-use App\Models\Payment;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class LoyaltyService
@@ -79,9 +77,8 @@ class LoyaltyService
                 throw ValidationException::withMessages(['points' => ['Bạn không đủ điểm để đổi phần thưởng này.']]);
             }
 
-            $code = 'LOYALTY-'.mb_strtoupper(Str::random(10));
             $voucher = Voucher::query()->create([
-                'code' => $code,
+                'code' => Voucher::generateCode('LOYALTY'),
                 'name' => $reward->name,
                 'discount_type' => $reward->discount_type,
                 'discount_value' => $reward->discount_value,

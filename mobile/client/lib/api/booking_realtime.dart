@@ -4,6 +4,7 @@ class BookingRealtime {
   io.Socket? _socket;
   String? _requestId;
   void Function(Map<String, dynamic> event)? eventHandler;
+  void Function()? notificationHandler;
 
   void connect({
     required String url,
@@ -33,7 +34,10 @@ class BookingRealtime {
       }
       onChange();
     });
-    socket.on('notification:event', (_) => onChange());
+    socket.on('notification:event', (_) {
+      notificationHandler?.call();
+      onChange();
+    });
     socket.connect();
   }
 
@@ -53,5 +57,6 @@ class BookingRealtime {
     _socket = null;
     _requestId = null;
     eventHandler = null;
+    notificationHandler = null;
   }
 }

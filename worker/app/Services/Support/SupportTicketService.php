@@ -138,9 +138,23 @@ class SupportTicketService
                     'status' => SupportTicketStatus::InReview,
                     'version' => $ticket->version + 1,
                 ])->save();
+            } elseif ($user->id === $ticket->opened_by
+                && $ticket->status === SupportTicketStatus::Resolved) {
+                $ticket->forceFill([
+                    'status' => SupportTicketStatus::Reopened,
+                    'version' => $ticket->version + 1,
+                ])->save();
+            } elseif ($user->id !== $ticket->opened_by
+                && ($ticket->status !== SupportTicketStatus::WaitingForCustomer
+                    || $ticket->assigned_to === null)) {
+                $ticket->forceFill([
+                    'assigned_to' => $ticket->assigned_to ?? $user->id,
+                    'status' => SupportTicketStatus::WaitingForCustomer,
+                    'version' => $ticket->version + 1,
+                ])->save();
             }
 
-            $this->outbox($ticket, 'SUPPORT_TICKET_UPDATED');
+            $this->outbox($ticket, 'SUPPORT_TICKET_MESSAGE_CREATED');
             $recipient = $user->id === $ticket->opened_by
                 ? $ticket->assignee
                 : $ticket->opener;
@@ -224,6 +238,7 @@ class SupportTicketService
             'aggregate_version' => $ticket->version,
             'payload' => [
                 'ticket_id' => $ticket->public_id,
+                'user_id' => $ticket->opener->public_id,
                 'status' => $ticket->status->value,
                 'priority' => $ticket->priority->value,
             ],

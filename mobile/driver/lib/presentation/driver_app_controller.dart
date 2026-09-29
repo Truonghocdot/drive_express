@@ -587,6 +587,7 @@ class DriverAppController extends ChangeNotifier {
     final url = configured.isNotEmpty
         ? configured
         : uri.replace(port: 3000, path: '', query: '', fragment: '').toString();
+    realtime!.notificationHandler = () => unawaited(loadTickets());
     realtime!.connect(
       url: url,
       token: _session.token,

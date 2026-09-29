@@ -4,6 +4,7 @@ class DriverRealtime {
   io.Socket? _socket;
   String? _requestId;
   void Function(Map<String, dynamic> event)? eventHandler;
+  void Function()? notificationHandler;
 
   void connect({
     required String url,
@@ -31,7 +32,10 @@ class DriverRealtime {
       }
       onChange();
     });
-    socket.on('notification:event', (_) => onChange());
+    socket.on('notification:event', (_) {
+      notificationHandler?.call();
+      onChange();
+    });
     socket.connect();
   }
 
@@ -49,5 +53,6 @@ class DriverRealtime {
     _socket = null;
     _requestId = null;
     eventHandler = null;
+    notificationHandler = null;
   }
 }

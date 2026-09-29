@@ -583,6 +583,7 @@ class ClientAppController extends ChangeNotifier {
         ? configured
         : uri.replace(port: 3000, path: '', query: '', fragment: '').toString();
     realtime!.eventHandler = (_) => unawaited(_loadTracking());
+    realtime!.notificationHandler = () => unawaited(loadTickets());
     realtime!.connect(
       url: url,
       token: _session.token,

@@ -59,12 +59,26 @@ class Voucher extends Model
     {
         static::creating(function (Voucher $voucher): void {
             $voucher->public_id ??= (string) Str::uuid();
+            $voucher->code = $voucher->code !== null && trim($voucher->code) !== ''
+                ? $voucher->code
+                : self::generateCode();
             $voucher->code = mb_strtoupper($voucher->code);
         });
 
         static::updating(function (Voucher $voucher): void {
             $voucher->code = mb_strtoupper($voucher->code);
         });
+    }
+
+    public static function generateCode(string $prefix = 'DRIVE'): string
+    {
+        $prefix = mb_strtoupper(trim($prefix));
+
+        do {
+            $code = $prefix.'-'.mb_strtoupper(Str::random(8));
+        } while (self::withTrashed()->where('code', $code)->exists());
+
+        return $code;
     }
 
     /** @return BelongsTo<User, $this> */

@@ -10,11 +10,13 @@ use App\Enums\UserStatus;
 use App\Filament\Resources\Incidents\Pages\ListIncidents;
 use App\Filament\Resources\Ratings\Pages\ListRatings;
 use App\Filament\Resources\SupportTickets\Pages\ListSupportTickets;
+use App\Filament\Resources\SupportTickets\Pages\ViewSupportTicket;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Models\Incident;
 use App\Models\Rating;
 use App\Models\Role;
 use App\Models\SupportTicket;
+use App\Models\SupportTicketMessage;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Filament\Facades\Filament;
@@ -63,6 +65,35 @@ test('support claims and resolves a ticket with audit', function () {
         'actor_user_id' => $support->id,
         'action' => 'SUPPORT_TICKET_RESOLVED',
     ]);
+});
+
+test('assigned support staff can reply to a ticket from its detail page', function () {
+    $support = supportOperationsStaff(RoleKey::Support);
+    $owner = User::factory()->create();
+    $ticket = SupportTicket::query()->create([
+        'opened_by' => $owner->id,
+        'assigned_to' => $support->id,
+        'category' => 'PAYMENT',
+        'priority' => SupportPriority::Normal,
+        'status' => SupportTicketStatus::InReview,
+        'subject' => 'Need payment clarification',
+        'description' => 'Please check my payment.',
+        'version' => 1,
+    ]);
+    $this->actingAs($support);
+
+    Livewire::test(ViewSupportTicket::class, ['record' => $ticket->getRouteKey()])
+        ->callAction('reply', ['body' => 'We have checked your payment.'])
+        ->assertHasNoActionErrors();
+
+    expect($ticket->fresh()?->status)->toBe(SupportTicketStatus::WaitingForCustomer)
+        ->and($ticket->fresh()?->version)->toBe(2);
+    $this->assertDatabaseHas('support_ticket_messages', [
+        'support_ticket_id' => $ticket->id,
+        'sender_user_id' => $support->id,
+        'body' => 'We have checked your payment.',
+    ]);
+    expect(SupportTicketMessage::query()->where('support_ticket_id', $ticket->id)->count())->toBe(1);
 });
 
 test('support resolves an incident and moderates a rating', function () {
