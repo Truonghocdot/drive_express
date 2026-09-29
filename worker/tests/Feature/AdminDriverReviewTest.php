@@ -59,6 +59,20 @@ test('approves a submitted driver application through the shared review service'
     ])->assertOk()->assertJsonStructure(['token']);
 });
 
+test('repairs the selected vehicle flag before approving a one-vehicle application', function () {
+    $admin = User::factory()->create();
+    $adminRoleId = Role::query()->where('key', RoleKey::Admin->value)->value('id');
+    $admin->roles()->attach($adminRoleId, ['granted_at' => now()]);
+    $vehicleType = VehicleType::query()->where('unique_key', 'MOTORBIKE')->firstOrFail();
+    $profile = DriverApplicationBuilder::submitted(User::factory()->create(), $vehicleType);
+    $profile->vehicles()->update(['is_selected' => false]);
+
+    app(DriverReviewService::class)->approve($profile, $admin);
+
+    expect($profile->fresh()->review_status)->toBe(DriverReviewStatus::Approved)
+        ->and($profile->vehicles()->sole()->is_selected)->toBeTrue();
+});
+
 test('adds hourly capability to an approved driver with a supported vehicle', function () {
     $admin = User::factory()->create();
     $adminRoleId = Role::query()->where('key', RoleKey::Admin->value)->value('id');

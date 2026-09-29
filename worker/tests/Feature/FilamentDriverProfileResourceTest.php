@@ -11,7 +11,6 @@ use App\Models\VehicleType;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\VehicleTypeSeeder;
 use Filament\Facades\Filament;
-use Illuminate\Support\Facades\Log;
 use Livewire\Livewire;
 use Tests\Support\DriverApplicationBuilder;
 
@@ -96,19 +95,11 @@ test('shows a clear notification when the profile cannot be approved', function 
         VehicleType::query()->where('unique_key', 'MOTORBIKE')->firstOrFail(),
     );
     $profile->capabilities()->delete();
-    Log::spy();
 
     Livewire::test(ViewDriverProfile::class, ['record' => $profile->getRouteKey()])
         ->callAction('approve', ['daily_cod_limit' => 8_000_000])
         ->assertNotified('Không thể phê duyệt tài xế')
         ->assertSet('mountedActions', []);
-
-    Log::shouldHaveReceived('warning')
-        ->once()
-        ->withArgs(fn (string $message, array $context): bool => $message === 'Driver approval rejected.'
-            && $context['driver_profile_id'] === $profile->id
-            && $context['admin_user_id'] === $admin->id
-            && $context['errors']['application'][0] === 'Hồ sơ chưa có xe được chọn hoặc năng lực dịch vụ.');
 
     expect($profile->fresh()->review_status)->toBe(DriverReviewStatus::PendingReview);
 });

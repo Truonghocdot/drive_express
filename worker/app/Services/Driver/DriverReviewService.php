@@ -13,6 +13,7 @@ use App\Models\DriverProfile;
 use App\Models\LedgerAccount;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\Vehicle;
 use App\Models\Wallet;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -46,7 +47,7 @@ class DriverReviewService
         Log::info('Driver approval requested.', $logContext);
 
         try {
-            $reviewed = DB::transaction(function () use ($profile, $admin, $dailyCodLimit): DriverProfile {
+            $reviewed = DB::transaction(function () use ($profile, $admin, $dailyCodLimit, $logContext): DriverProfile {
                 $profile = DriverProfile::query()->lockForUpdate()->findOrFail($profile->id);
                 $before = $this->auditSnapshot($profile);
 
@@ -55,10 +56,23 @@ class DriverReviewService
                 }
 
                 $selectedVehicle = $profile->vehicles()->where('is_selected', true)->first();
+                if ($selectedVehicle === null) {
+                    $vehicles = $profile->vehicles()->get();
+
+                    if ($vehicles->count() === 1) {
+                        $selectedVehicle = $vehicles->sole();
+                        $selectedVehicle->forceFill(['is_selected' => true])->save();
+                        Log::warning('Driver approval repaired missing selected vehicle.', [
+                            ...$logContext,
+                            'vehicle_id' => $selectedVehicle->id,
+                            'vehicle_public_id' => $selectedVehicle->public_id,
+                        ]);
+                    }
+                }
 
                 if ($selectedVehicle === null || ! $profile->capabilities()->exists()) {
                     throw ValidationException::withMessages([
-                        'application' => ['Hồ sơ chưa có xe được chọn hoặc năng lực dịch vụ.'],
+                        'application' => [$this->approvalRequirementError($profile, $selectedVehicle)],
                     ]);
                 }
 
@@ -136,6 +150,20 @@ class DriverReviewService
             'admin_user_id' => $admin->id,
             'daily_cod_limit' => $dailyCodLimit,
         ];
+    }
+
+    private function approvalRequirementError(DriverProfile $profile, ?Vehicle $selectedVehicle): string
+    {
+        $errors = [];
+
+        if ($selectedVehicle === null) {
+            $errors[] = 'Hồ sơ chưa có xe được chọn.';
+        }
+        if (! $profile->capabilities()->exists()) {
+            $errors[] = 'Hồ sơ chưa có dịch vụ đăng ký.';
+        }
+
+        return implode(' ', $errors);
     }
 
     public function reject(DriverProfile $profile, User $admin, string $reasonCode): DriverProfile

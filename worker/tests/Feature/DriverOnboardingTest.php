@@ -2,9 +2,13 @@
 
 use App\Enums\DriverDocumentType;
 use App\Enums\DriverReviewStatus;
+use App\Enums\RoleKey;
 use App\Models\DriverDocument;
+use App\Models\DriverProfile;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\VehicleType;
+use App\Services\Driver\DriverReviewService;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\VehicleTypeSeeder;
 use Illuminate\Http\UploadedFile;
@@ -74,6 +78,19 @@ test('submits a complete driver application with private documents', function ()
     DriverDocument::query()->each(
         fn (DriverDocument $document) => Storage::disk('local')->assertExists($document->file_path),
     );
+
+    $admin = User::factory()->create();
+    $admin->roles()->attach(
+        Role::query()->where('key', RoleKey::Admin->value)->value('id'),
+        ['granted_at' => now()],
+    );
+    app(DriverReviewService::class)->approve(
+        DriverProfile::query()->where('user_id', $user->id)->firstOrFail(),
+        $admin,
+    );
+
+    expect(DriverProfile::query()->where('user_id', $user->id)->firstOrFail()->review_status)
+        ->toBe(DriverReviewStatus::Approved);
 });
 
 test('rejects submission when required documents are missing', function () {
