@@ -12,7 +12,7 @@ Schema đã được triển khai tại `worker/database/migrations/` và có co
 
 | Tài liệu | Nội dung |
 |---|---|
-| [01-er-diagram.md](./01-er-diagram.md) | ERD tổng thể theo domain và quan hệ chính |
+| [01-er-diagram.md](./01-er-diagram.md) | ERD triển khai theo domain, gồm loyalty, voucher ownership và HOURLY |
 | [02-identity-driver-catalog.md](./02-identity-driver-catalog.md) | User, role, OTP, tài xế, phương tiện, vị trí cuối và pricing |
 | [03-service-delivery-drive.md](./03-service-delivery-drive.md) | Quote, service request, Delivery, Drive, offer, assignment và status history |
 | [04-finance-wallet-payment.md](./04-finance-wallet-payment.md) | Wallet ledger, Payment, settlement, voucher, top-up, withdrawal, refund và COD |
