@@ -13,7 +13,9 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class ViewDriverProfile extends ViewRecord
 {
@@ -50,6 +52,21 @@ class ViewDriverProfile extends ViewRecord
                         Notification::make()
                             ->title('Không thể phê duyệt tài xế')
                             ->body(collect($exception->errors())->flatten()->first() ?? 'Hồ sơ chưa đáp ứng điều kiện phê duyệt.')
+                            ->danger()
+                            ->persistent()
+                            ->send();
+                    } catch (Throwable $exception) {
+                        Log::error('Filament driver approval action failed.', [
+                            'source' => 'driver_profile_view',
+                            'driver_profile_id' => $this->driver()->id,
+                            'driver_profile_public_id' => $this->driver()->public_id,
+                            'admin_user_id' => $this->admin()->id,
+                            'exception' => $exception,
+                        ]);
+                        $action->failure();
+                        Notification::make()
+                            ->title('Không thể phê duyệt tài xế')
+                            ->body('Đã xảy ra lỗi hệ thống. Vui lòng kiểm tra nhật ký hệ thống và thử lại.')
                             ->danger()
                             ->persistent()
                             ->send();

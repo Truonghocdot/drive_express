@@ -14,7 +14,9 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class DriverProfilesTable
 {
@@ -78,6 +80,21 @@ class DriverProfilesTable
                             Notification::make()
                                 ->title('Không thể phê duyệt tài xế')
                                 ->body(collect($exception->errors())->flatten()->first() ?? 'Hồ sơ chưa đáp ứng điều kiện phê duyệt.')
+                                ->danger()
+                                ->persistent()
+                                ->send();
+                        } catch (Throwable $exception) {
+                            Log::error('Filament driver approval action failed.', [
+                                'source' => 'driver_profiles_table',
+                                'driver_profile_id' => $record->id,
+                                'driver_profile_public_id' => $record->public_id,
+                                'admin_user_id' => self::admin()->id,
+                                'exception' => $exception,
+                            ]);
+                            $action->failure();
+                            Notification::make()
+                                ->title('Không thể phê duyệt tài xế')
+                                ->body('Đã xảy ra lỗi hệ thống. Vui lòng kiểm tra nhật ký hệ thống và thử lại.')
                                 ->danger()
                                 ->persistent()
                                 ->send();

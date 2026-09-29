@@ -15,9 +15,11 @@ use App\Models\Role;
 use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use LogicException;
+use Throwable;
 
 class DriverReviewService
 {
@@ -39,62 +41,101 @@ class DriverReviewService
         ?float $dailyCodLimit = null,
     ): DriverProfile {
         $dailyCodLimit ??= (float) config('finance.driver_daily_cod_limit', 8_000_000);
+        $logContext = $this->approvalLogContext($profile, $admin, $dailyCodLimit);
 
-        return DB::transaction(function () use ($profile, $admin, $dailyCodLimit): DriverProfile {
-            $profile = DriverProfile::query()->lockForUpdate()->findOrFail($profile->id);
-            $before = $this->auditSnapshot($profile);
+        Log::info('Driver approval requested.', $logContext);
 
-            if ($profile->review_status !== DriverReviewStatus::PendingReview) {
-                $this->throwInvalidState();
-            }
+        try {
+            $reviewed = DB::transaction(function () use ($profile, $admin, $dailyCodLimit): DriverProfile {
+                $profile = DriverProfile::query()->lockForUpdate()->findOrFail($profile->id);
+                $before = $this->auditSnapshot($profile);
 
-            $selectedVehicle = $profile->vehicles()->where('is_selected', true)->first();
+                if ($profile->review_status !== DriverReviewStatus::PendingReview) {
+                    $this->throwInvalidState();
+                }
 
-            if ($selectedVehicle === null || ! $profile->capabilities()->exists()) {
-                throw ValidationException::withMessages([
-                    'application' => ['Hồ sơ chưa có xe được chọn hoặc năng lực dịch vụ.'],
+                $selectedVehicle = $profile->vehicles()->where('is_selected', true)->first();
+
+                if ($selectedVehicle === null || ! $profile->capabilities()->exists()) {
+                    throw ValidationException::withMessages([
+                        'application' => ['Hồ sơ chưa có xe được chọn hoặc năng lực dịch vụ.'],
+                    ]);
+                }
+
+                $this->validateRequiredDocuments($profile, $selectedVehicle->id);
+
+                if ($profile->documents()->whereDate('expires_at', '<', today())->exists()) {
+                    throw ValidationException::withMessages([
+                        'application' => ['Cần thay thế giấy tờ hết hạn trước khi phê duyệt.'],
+                    ]);
+                }
+
+                $profile->documents()
+                    ->where('status', ReviewableStatus::Pending->value)
+                    ->update([
+                        'status' => ReviewableStatus::Approved->value,
+                        'reviewed_by' => $admin->id,
+                        'reviewed_at' => now(),
+                    ]);
+                $profile->vehicles()
+                    ->where('is_selected', true)
+                    ->update(['status' => ReviewableStatus::Approved->value]);
+                $profile->capabilities()->update([
+                    'is_active' => true,
+                    'approved_by' => $admin->id,
+                    'approved_at' => now(),
                 ]);
-            }
 
-            $this->validateRequiredDocuments($profile, $selectedVehicle->id);
-
-            if ($profile->documents()->whereDate('expires_at', '<', today())->exists()) {
-                throw ValidationException::withMessages([
-                    'application' => ['Cần thay thế giấy tờ hết hạn trước khi phê duyệt.'],
-                ]);
-            }
-
-            $profile->documents()
-                ->where('status', ReviewableStatus::Pending->value)
-                ->update([
-                    'status' => ReviewableStatus::Approved->value,
+                $profile->forceFill([
+                    'review_status' => DriverReviewStatus::Approved,
+                    'availability_status' => DriverAvailabilityStatus::Offline,
+                    'review_reason_code' => null,
                     'reviewed_by' => $admin->id,
                     'reviewed_at' => now(),
-                ]);
-            $profile->vehicles()
-                ->where('is_selected', true)
-                ->update(['status' => ReviewableStatus::Approved->value]);
-            $profile->capabilities()->update([
-                'is_active' => true,
-                'approved_by' => $admin->id,
-                'approved_at' => now(),
+                    'cod_limit' => $dailyCodLimit,
+                ])->save();
+
+                $this->grantDriverRole($profile->user_id, $admin->id);
+                $this->ensureWallet($profile->user_id);
+                $this->audit($profile, $admin, 'DRIVER_APPROVED', $before);
+
+                return $this->load($profile);
+            });
+
+            Log::info('Driver approval completed.', [
+                ...$logContext,
+                'review_status' => $reviewed->review_status->value,
             ]);
 
-            $profile->forceFill([
-                'review_status' => DriverReviewStatus::Approved,
-                'availability_status' => DriverAvailabilityStatus::Offline,
-                'review_reason_code' => null,
-                'reviewed_by' => $admin->id,
-                'reviewed_at' => now(),
-                'cod_limit' => $dailyCodLimit,
-            ])->save();
+            return $reviewed;
+        } catch (ValidationException $exception) {
+            Log::warning('Driver approval rejected.', [
+                ...$logContext,
+                'errors' => $exception->errors(),
+                'exception' => $exception,
+            ]);
 
-            $this->grantDriverRole($profile->user_id, $admin->id);
-            $this->ensureWallet($profile->user_id);
-            $this->audit($profile, $admin, 'DRIVER_APPROVED', $before);
+            throw $exception;
+        } catch (Throwable $exception) {
+            Log::error('Driver approval failed.', [
+                ...$logContext,
+                'exception' => $exception,
+            ]);
 
-            return $this->load($profile);
-        });
+            throw $exception;
+        }
+    }
+
+    /** @return array<string, int|float|string> */
+    private function approvalLogContext(DriverProfile $profile, User $admin, float $dailyCodLimit): array
+    {
+        return [
+            'driver_profile_id' => $profile->id,
+            'driver_profile_public_id' => $profile->public_id,
+            'driver_user_id' => $profile->user_id,
+            'admin_user_id' => $admin->id,
+            'daily_cod_limit' => $dailyCodLimit,
+        ];
     }
 
     public function reject(DriverProfile $profile, User $admin, string $reasonCode): DriverProfile
