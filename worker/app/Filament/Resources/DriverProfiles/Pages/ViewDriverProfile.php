@@ -13,6 +13,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Validation\ValidationException;
 
 class ViewDriverProfile extends ViewRecord
 {
@@ -35,14 +36,24 @@ class ViewDriverProfile extends ViewRecord
                 ])
                 ->requiresConfirmation()
                 ->visible(fn (): bool => $this->driver()->review_status === DriverReviewStatus::PendingReview)
-                ->action(function (array $data, DriverReviewService $review): void {
-                    $review->approve(
-                        $this->driver(),
-                        $this->admin(),
-                        (float) $data['daily_cod_limit'],
-                    );
-                    $this->refreshFormData(['review_status', 'availability_status', 'reviewed_at']);
-                    Notification::make()->title('Đã phê duyệt tài xế')->success()->send();
+                ->successNotificationTitle('Đã phê duyệt tài xế')
+                ->successRedirectUrl(fn (): string => DriverProfileResource::getUrl('view', ['record' => $this->driver()]))
+                ->action(function (array $data, Action $action, DriverReviewService $review): void {
+                    try {
+                        $review->approve(
+                            $this->driver(),
+                            $this->admin(),
+                            (float) $data['daily_cod_limit'],
+                        );
+                    } catch (ValidationException $exception) {
+                        $action->failure();
+                        Notification::make()
+                            ->title('Không thể phê duyệt tài xế')
+                            ->body(collect($exception->errors())->flatten()->first() ?? 'Hồ sơ chưa đáp ứng điều kiện phê duyệt.')
+                            ->danger()
+                            ->persistent()
+                            ->send();
+                    }
                 }),
             Action::make('addCapability')
                 ->label('Thêm dịch vụ')

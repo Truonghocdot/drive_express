@@ -4,6 +4,7 @@ use App\Enums\DriverReviewStatus;
 use App\Enums\RoleKey;
 use App\Filament\Resources\DriverProfiles\DriverProfileResource;
 use App\Filament\Resources\DriverProfiles\Pages\ListDriverProfiles;
+use App\Filament\Resources\DriverProfiles\Pages\ViewDriverProfile;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\VehicleType;
@@ -62,6 +63,45 @@ test('approves a driver through the Filament table action and writes audit', fun
         'action' => 'DRIVER_APPROVED',
         'subject_id' => $profile->id,
     ]);
+});
+
+test('approves a driver through the profile page action', function () {
+    $admin = User::factory()->create();
+    $adminRoleId = Role::query()->where('key', RoleKey::Admin->value)->value('id');
+    $admin->roles()->attach($adminRoleId, ['granted_at' => now()]);
+    $this->actingAs($admin);
+
+    $profile = DriverApplicationBuilder::submitted(
+        User::factory()->create(),
+        VehicleType::query()->where('unique_key', 'MOTORBIKE')->firstOrFail(),
+    );
+
+    Livewire::test(ViewDriverProfile::class, ['record' => $profile->getRouteKey()])
+        ->callAction('approve', ['daily_cod_limit' => 8_000_000])
+        ->assertHasNoActionErrors()
+        ->assertSet('mountedActions', []);
+
+    expect($profile->fresh()->review_status)->toBe(DriverReviewStatus::Approved);
+});
+
+test('shows a clear notification when the profile cannot be approved', function () {
+    $admin = User::factory()->create();
+    $adminRoleId = Role::query()->where('key', RoleKey::Admin->value)->value('id');
+    $admin->roles()->attach($adminRoleId, ['granted_at' => now()]);
+    $this->actingAs($admin);
+
+    $profile = DriverApplicationBuilder::submitted(
+        User::factory()->create(),
+        VehicleType::query()->where('unique_key', 'MOTORBIKE')->firstOrFail(),
+    );
+    $profile->documents()->firstOrFail()->delete();
+
+    Livewire::test(ViewDriverProfile::class, ['record' => $profile->getRouteKey()])
+        ->callAction('approve', ['daily_cod_limit' => 8_000_000])
+        ->assertNotified('Không thể phê duyệt tài xế')
+        ->assertSet('mountedActions', []);
+
+    expect($profile->fresh()->review_status)->toBe(DriverReviewStatus::PendingReview);
 });
 
 test('rejects a driver through the Filament table action with a reason', function () {

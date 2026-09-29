@@ -14,6 +14,7 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Validation\ValidationException;
 
 class DriverProfilesTable
 {
@@ -68,9 +69,19 @@ class DriverProfilesTable
                     ])
                     ->requiresConfirmation()
                     ->visible(fn (DriverProfile $record): bool => $record->review_status === DriverReviewStatus::PendingReview)
-                    ->action(function (DriverProfile $record, array $data, DriverReviewService $review): void {
-                        $review->approve($record, self::admin(), (float) $data['daily_cod_limit']);
-                        Notification::make()->title('Đã phê duyệt tài xế')->success()->send();
+                    ->successNotificationTitle('Đã phê duyệt tài xế')
+                    ->action(function (DriverProfile $record, array $data, Action $action, DriverReviewService $review): void {
+                        try {
+                            $review->approve($record, self::admin(), (float) $data['daily_cod_limit']);
+                        } catch (ValidationException $exception) {
+                            $action->failure();
+                            Notification::make()
+                                ->title('Không thể phê duyệt tài xế')
+                                ->body(collect($exception->errors())->flatten()->first() ?? 'Hồ sơ chưa đáp ứng điều kiện phê duyệt.')
+                                ->danger()
+                                ->persistent()
+                                ->send();
+                        }
                     }),
                 Action::make('reject')
                     ->label('Từ chối')
