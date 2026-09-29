@@ -54,6 +54,43 @@ test('returns active push tokens for the realtime service', function () {
     expect($activeDevice->fresh()->revoked_at)->toBeNull();
 });
 
+test('limits a targeted notification to its selected app type', function () {
+    config()->set('services.realtime.internal_token', 'test-realtime-secret');
+    $user = User::factory()->create();
+    $notification = UserNotification::query()->create([
+        'user_id' => $user->id,
+        'type' => 'MARKETING_BROADCAST',
+        'channel' => 'IN_APP',
+        'data' => [
+            'title' => 'Customer offer',
+            'body' => 'A customer-only offer.',
+            'target_app_type' => 'CUSTOMER_APP',
+        ],
+        'status' => 'SENT',
+        'sent_at' => now(),
+    ]);
+    UserDevice::query()->create([
+        'user_id' => $user->id,
+        'device_id' => 'customer-device',
+        'app_type' => 'CUSTOMER_APP',
+        'platform' => 'ANDROID',
+        'push_token' => 'customer-token',
+    ]);
+    UserDevice::query()->create([
+        'user_id' => $user->id,
+        'device_id' => 'driver-device',
+        'app_type' => 'DRIVER_APP',
+        'platform' => 'ANDROID',
+        'push_token' => 'driver-token',
+    ]);
+
+    $this->withHeader('X-Internal-Service-Token', 'test-realtime-secret')
+        ->getJson('/api/v1/internal/notifications/'.$notification->id.'/dispatch')
+        ->assertOk()
+        ->assertJsonPath('data.devices.0.app_type', 'CUSTOMER_APP')
+        ->assertJsonPath('data.devices.0.tokens', ['customer-token']);
+});
+
 test('rejects notification dispatch without the internal service secret', function () {
     config()->set('services.realtime.internal_token', 'test-realtime-secret');
     $notification = UserNotification::query()->create([

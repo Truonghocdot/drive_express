@@ -67,8 +67,8 @@ export class FirebasePushSender implements PushSender {
       const message: MulticastMessage = {
         tokens,
         notification: {
-          title: titleFor(notification.type),
-          body: bodyFor(notification.type),
+          title: titleFor(notification.type, notification.data),
+          body: bodyFor(notification.type, notification.data),
         },
         data: {
           notification_id: notification.id,
@@ -136,7 +136,11 @@ function stringifyData(data: Record<string, unknown>): Record<string, string> {
   );
 }
 
-function titleFor(type: string): string {
+function titleFor(type: string, data: Record<string, unknown>): string {
+  if (typeof data.title === 'string' && data.title.trim() !== '') {
+    return data.title;
+  }
+
   if (type === 'CHAT_MESSAGE_RECEIVED') {
     return 'New message';
   }
@@ -160,7 +164,11 @@ function titleFor(type: string): string {
   return 'New notification';
 }
 
-function bodyFor(type: string): string {
+function bodyFor(type: string, data: Record<string, unknown>): string {
+  if (typeof data.body === 'string' && data.body.trim() !== '') {
+    return data.body;
+  }
+
   if (type === 'CHAT_MESSAGE_RECEIVED') {
     return 'You have a new message.';
   }

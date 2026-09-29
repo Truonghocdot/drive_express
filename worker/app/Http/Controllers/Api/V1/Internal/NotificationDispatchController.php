@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Internal;
 
+use App\Enums\AppType;
 use App\Http\Controllers\Controller;
 use App\Models\UserNotification;
 use Illuminate\Http\JsonResponse;
@@ -14,11 +15,14 @@ class NotificationDispatchController extends Controller
             ->with('user')
             ->findOrFail($notification);
 
+        $targetAppType = AppType::tryFrom((string) ($record->data['target_app_type'] ?? ''))?->value;
+
         $devices = $record->user
             ->devices()
             ->select(['app_type', 'push_token'])
             ->whereNotNull('push_token')
             ->whereNull('revoked_at')
+            ->when($targetAppType !== null, fn ($query) => $query->where('app_type', $targetAppType))
             ->get()
             ->groupBy('app_type')
             ->map(static fn ($devices, string $appType): array => [
