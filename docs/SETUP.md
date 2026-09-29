@@ -56,7 +56,10 @@ php artisan migrate
 php artisan db:seed --class=RoleSeeder
 php artisan db:seed --class=VehicleTypeSeeder
 php artisan app:create-admin-user 0901234567 --name="Administrator"
+php artisan db:seed --class=PricingConfigurationSeeder
 ```
+
+`PricingConfigurationSeeder` tạo cấu hình mặc định (TTL báo giá, làm tròn tiền, sai số) và bảng giá giao hàng, đặt xe, thuê giờ. Tính năng thuê giờ vẫn tắt mặc định; bật tại **Admin → Cấu hình hệ thống** sau khi kiểm tra bảng giá.
 
 > `php artisan migrate:fresh --seed` chỉ dùng khi được phép xóa toàn bộ dữ liệu database local.
 
