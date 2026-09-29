@@ -50,10 +50,6 @@ return [
         ],
     ],
 
-    'sepay' => [
-        'webhook_secret' => env('SEPAY_WEBHOOK_SECRET'),
-    ],
-
     'realtime' => [
         'internal_token' => env('REALTIME_INTERNAL_TOKEN'),
     ],

@@ -23,7 +23,6 @@ beforeEach(function () {
 
 test('creates and completes a SePay top-up exactly once for duplicate webhooks', function () {
     config()->set([
-        'services.sepay.webhook_secret' => 'sepay-secret',
         'finance.vietqr.bank_code' => 'MB',
         'finance.vietqr.account_number' => '0123456789',
         'finance.vietqr.account_name' => 'PROJECT',
@@ -42,12 +41,8 @@ test('creates and completes a SePay top-up exactly once for duplicate webhooks',
         'amount' => 200_000,
     ];
 
-    $this->postJson('/api/v1/webhooks/sepay', $payload, [
-        'X-SePay-Secret' => 'sepay-secret',
-    ])->assertOk();
-    $this->postJson('/api/v1/webhooks/sepay', $payload, [
-        'X-SePay-Secret' => 'sepay-secret',
-    ])->assertOk();
+    $this->postJson('/api/v1/webhooks/sepay', $payload)->assertOk();
+    $this->postJson('/api/v1/webhooks/sepay', $payload)->assertOk();
 
     $this->assertDatabaseCount('wallet_topups', 1);
     $this->assertDatabaseCount('webhook_receipts', 1);
@@ -101,15 +96,13 @@ test('driver can create a VietQR top-up while the wallet is negative', function 
     ]);
 });
 
-test('rejects a SePay webhook with an invalid secret', function () {
-    config()->set('services.sepay.webhook_secret', 'correct-secret');
-
+test('accepts SePay webhook requests without an authentication header', function () {
     $this->postJson('/api/v1/webhooks/sepay', [
         'event_id' => 'invalid-event',
         'transaction_id' => 'invalid-transaction',
         'reference' => 'UNKNOWN',
         'amount' => 100_000,
-    ], ['X-SePay-Secret' => 'wrong-secret'])->assertUnauthorized();
+    ])->assertUnprocessable();
 
     $this->assertDatabaseCount('webhook_receipts', 0);
 });

@@ -108,7 +108,7 @@ Các status thường gặp:
 | `GET` | `/service-evidence/{evidence}/file` | owner/assigned driver/admin | 6 |
 | `GET` | `/wallet` | `auth:sanctum` | 7 |
 | `GET, POST` | `/wallet/topups` | `auth:sanctum` + idempotency khi POST | 7 |
-| `POST` | `/webhooks/sepay` | `X-SePay-Secret` | 7 |
+| `POST` | `/webhooks/sepay` | Không yêu cầu header xác thực | 7 |
 | `GET, POST` | `/driver/bank-accounts` | `auth:sanctum` + `role:DRIVER` | 7 |
 | `GET, POST` | `/driver/withdrawals` | `auth:sanctum` + `role:DRIVER` | 7 |
 | `GET` | `/driver/history` | `auth:sanctum` + `role:DRIVER`, closed assignments | 10 |
@@ -584,7 +584,7 @@ Terminal execution tự tạo settlement idempotent. WALLET ghi có phần khác
 
 - `GET /wallet`: balance, reserved, available và 50 ledger entries gần nhất.
 - `POST /wallet/topups`: tạo VietQR request, bắt buộc `Idempotency-Key`.
-- `POST /webhooks/sepay`: xác thực `X-SePay-Secret`, dedup `event_id/transaction_id`, post TOP_UP cân bằng.
+- `POST /webhooks/sepay`: không yêu cầu header xác thực; đối chiếu top-up đang chờ theo `reference` và `amount`, dedup `event_id/transaction_id`, rồi post TOP_UP cân bằng.
 
 ### Bank account và withdrawal
 

@@ -12,9 +12,6 @@ class SePayWebhookController extends Controller
 {
     public function __invoke(Request $request, TopupService $topups): JsonResponse
     {
-        $secret = (string) config('services.sepay.webhook_secret');
-        $provided = (string) $request->header('X-SePay-Secret');
-        abort_unless($secret !== '' && hash_equals($secret, $provided), 401);
         $data = Validator::validate($request->all(), [
             'event_id' => ['required', 'string', 'max:191'],
             'transaction_id' => ['required', 'string', 'max:100'],
