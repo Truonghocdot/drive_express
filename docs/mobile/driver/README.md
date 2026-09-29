@@ -52,21 +52,17 @@ Map không cung cấp turn-by-turn voice navigation. Nút refresh route lấy GP
 
 ## Cấu hình local
 
-Tạo `mobile/driver/.env` từ `.env.example`:
-
-```env
-API_BASE_URL=http://10.0.2.2:8000/api/v1
-REALTIME_URL=http://10.0.2.2:3000
-GOONG_API_KEY=your_goong_rest_api_key
-GOONG_MAP_KEY=your_goong_map_tile_key
-GOONG_MAP_STYLE_URL=
-```
-
-Chạy emulator:
+Source Flutter đọc cấu hình bằng `String.fromEnvironment`; `.env` chỉ dùng để ghi chú giá trị local, không được nạp tự động. Chạy emulator bằng build-time define:
 
 ```powershell
-flutter run -d emulator-5556 --dart-define-from-file=.env
+flutter run -d emulator-5556 `
+  --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1 `
+  --dart-define=REALTIME_URL=http://10.0.2.2:3000 `
+  --dart-define=GOONG_API_KEY=your_goong_rest_api_key `
+  --dart-define=GOONG_MAP_KEY=your_goong_map_tile_key
 ```
+
+Xem [Hướng dẫn cài đặt local](../../SETUP.md) để chạy trên điện thoại trong LAN, worker, realtime service và FCM.
 
 Không commit `.env` hoặc Firebase Admin credentials. `google-services.json` và `firebase_options.dart` là cấu hình client của Firebase driver project; credential Admin được cấu hình riêng ở `service/.env`.
 

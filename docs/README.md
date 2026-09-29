@@ -4,6 +4,8 @@
 >
 > Cập nhật: **2026-09-22**
 
+> Bắt đầu từ [Hướng dẫn cài đặt local](./SETUP.md) để chạy worker, realtime service và hai mobile app.
+
 Thư mục này mô tả baseline luồng nghiệp vụ cho ứng dụng đặt giao hàng (Delivery) và đặt xe chở khách (Drive). Tiến độ code và những giới hạn chưa nghiệm thu được theo dõi tại [Implementation phases](./implementation/README.md).
 
 ## Quy ước
