@@ -1,4 +1,5 @@
 <x-filament-panels::page>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <div class="space-y-6">
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             @foreach ($stats as $stat)
