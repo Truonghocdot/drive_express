@@ -16,6 +16,7 @@ use App\Models\ServiceStatusHistory;
 use App\Models\Settlement;
 use App\Models\Wallet;
 use App\Services\Pricing\PricingService;
+use App\Services\Loyalty\LoyaltyService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -25,6 +26,7 @@ class SettlementService
     public function __construct(
         private readonly LedgerService $ledger,
         private readonly PricingService $pricing,
+        private readonly LoyaltyService $loyalty,
     ) {}
 
     public function settle(ServiceRequest $serviceRequest): Settlement
@@ -213,6 +215,9 @@ class SettlementService
                 'settlement_id' => $settlement->public_id,
                 'driver_profile_id' => $driverProfile->public_id,
             ]);
+            $request->setRelation('payment', $payment);
+            $request->setRelation('creator', $request->creator);
+            $this->loyalty->earnForSettlement($request);
 
             return $settlement->load(['payment', 'assignment', 'driverProfile.user']);
         });

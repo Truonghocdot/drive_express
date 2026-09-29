@@ -26,7 +26,7 @@ class SubmitDriverApplicationRequest extends FormRequest
     {
         return [
             'vehicle_id' => ['required', 'uuid'],
-            'service_types' => ['required', 'array', 'min:1', 'max:2'],
+            'service_types' => ['required', 'array', 'min:1', 'max:3'],
             'service_types.*' => ['required', 'distinct', Rule::enum(ServiceType::class)],
         ];
     }

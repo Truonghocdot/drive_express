@@ -324,7 +324,8 @@ class DriverOnboardingService
             $serviceEnums = collect($serviceTypes)->map(ServiceType::from(...));
 
             foreach ($serviceEnums as $serviceType) {
-                if ($serviceType === ServiceType::Drive && $vehicle->vehicleType->passenger_capacity === null) {
+                if (in_array($serviceType, [ServiceType::Drive, ServiceType::Hourly], true)
+                    && $vehicle->vehicleType->passenger_capacity === null) {
                     throw ValidationException::withMessages([
                         'service_types' => ['Xe được chọn không hỗ trợ dịch vụ đặt xe.'],
                     ]);

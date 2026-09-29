@@ -74,6 +74,27 @@ class PricingService
         );
     }
 
+    public function calculateHourly(
+        PricingRule $rule,
+        int $durationHours,
+        float $voucherDiscount = 0,
+    ): PricingBreakdown {
+        $rate = $rule->hourly_rate ?? $rule->base_fare;
+        $grossFare = $this->roundCurrency(max(0, $rate) * $durationHours);
+        $voucherDiscount = min($grossFare, $this->roundCurrency(max(0, $voucherDiscount)));
+
+        return new PricingBreakdown(
+            baseFare: $grossFare,
+            extraDistanceFare: 0,
+            surchargeAmount: 0,
+            grossFare: $grossFare,
+            voucherDiscount: $voucherDiscount,
+            customerPayable: max(0, $grossFare - $voucherDiscount),
+            driverRate: $rule->driver_rate,
+            currency: $rule->currency,
+        );
+    }
+
     public function roundCurrency(float $amount): float
     {
         $setting = SystemSetting::query()

@@ -335,16 +335,18 @@ Hai app gọi API worker để quyết định trạng thái; Socket.IO chỉ b�
 - `lib/api/driver_api.dart`: phiên onboarding bằng `CUSTOMER_APP` khi chưa được duyệt; đăng nhập lại `DRIVER_APP` sau duyệt. Có hồ sơ, xe, multipart giấy tờ/evidence, catalog, availability, location, offer, execution, ngân hàng/rút tiền và support.
 - `lib/api/device_location.dart`: xin quyền vị trí, lấy GPS thật; không gửi tọa độ điểm đón/điểm trả giả làm vị trí hiện tại. Manifest Android và Info.plist iOS khai báo quyền dùng khi app mở.
 - `lib/presentation/driver_app_controller.dart`: điều phối KYC, GPS heartbeat, offer, active job, evidence, finance và support; `main.dart` chỉ bootstrap dependency.
-- `lib/presentation/pages/`: auth/KYC, bottom navigation, home/offer dialog, active job/update/chat, wallet/withdraw, history và profile theo [driver mobile structure](../mobile/driver/README.md).
+- `lib/presentation/pages/`: auth/KYC, dark-first bottom navigation, map-first home/bottom-sheet offer, active job/update/chat, wallet/withdraw, filterable history và performance profile theo [driver mobile structure](../mobile/driver/README.md).
 - `lib/api/driver_realtime.dart` và `lib/api/session_store.dart`: join lại booking room, nạp lại offer sau reconnect, lưu phiên và xóa khi logout/`401`.
-- `GET /driver/history` cung cấp closed-assignment read-model; offer `ACCEPTED` đã đóng bị loại khỏi active feed.
-- Worker `DriverAvailabilityService` đã sửa presence: chỉ ghi Redis khi online, xóa Redis khi offline. Heartbeat online gia hạn TTL 15 giây; `/driver/location` chỉ dùng cho assignment active.
+- `GET /driver/history` cung cấp closed-assignment read-model với filter `from/to/status/service_type/q`, pagination và `meta.summary`; offer `ACCEPTED` đã đóng bị loại khỏi active feed.
+- `GET /driver/application` trả thêm performance metrics; `GET /wallet` trả ledger transaction metadata cho wallet UI.
+- Worker `DriverAvailabilityService` chỉ ghi Redis khi online, xóa Redis khi offline. Driver app gửi heartbeat 5 giây; presence TTL là 15 giây; `/driver/location` được dùng cho assignment active và availability heartbeat.
+- FCM push được dispatch ở `service` qua credential riêng cho `CUSTOMER_APP` và `DRIVER_APP`; token được đăng ký từ mobile login/verify phone.
 
 ### Gate đã kiểm tra
 
 - Customer: API/widget tests gồm auth, error `401`, khôi phục chuyến, reconnect, form 320px, retry chat giữ nguyên `client_message_id`; `flutter analyze` sạch và build web thành công.
 - Driver: API/widget tests gồm onboarding, upload, availability, permission denied, reconnect, retry SOS giữ nguyên `Idempotency-Key`; `flutter analyze` sạch và APK debug build thành công.
-- Command đang chờ giữ nguyên key khi người dùng retry trong phiên đang mở; sau relaunch app lấy lại trạng thái worker trước khi cho thao tác mới. Chưa có hàng đợi command offline bền vững hoặc push provider: thuộc hardening Phase 11.
+- Command đang chờ giữ nguyên key khi người dùng retry trong phiên đang mở; sau relaunch app lấy lại trạng thái worker trước khi cho thao tác mới. Chưa có hàng đợi command offline bền vững; FCM push provider đã có cho hai Firebase project và vẫn chỉ là wake-up/fallback, không phải nguồn trạng thái chuẩn.
 - iOS chưa thể smoke/build trên máy Windows này; cần kiểm tra trên macOS cùng cấu hình signing/Keychain trong Phase 11. Business pricing/matching/settlement không nằm trong Dart.
 
 ## 13. Phase 11 - Hardening và demo

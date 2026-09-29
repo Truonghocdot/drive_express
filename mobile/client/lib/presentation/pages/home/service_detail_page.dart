@@ -17,16 +17,27 @@ class ServiceDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final delivery = service == ServiceKind.delivery;
+    final hourly = service == ServiceKind.hourly;
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) => Scaffold(
-        appBar: AppBar(title: Text(delivery ? 'Giao hàng' : 'Đặt xe')),
+        appBar: AppBar(
+          title: Text(
+            delivery
+                ? 'Giao hàng'
+                : hourly
+                ? 'Thuê giờ'
+                : 'Đặt xe',
+          ),
+        ),
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
             Icon(
               delivery
                   ? Icons.local_shipping_outlined
+                  : hourly
+                  ? Icons.schedule_outlined
                   : Icons.directions_car_outlined,
               size: 54,
               color: Theme.of(context).colorScheme.primary,
@@ -35,6 +46,8 @@ class ServiceDetailPage extends StatelessWidget {
             Text(
               delivery
                   ? 'Chọn phương tiện giao hàng'
+                  : hourly
+                  ? 'Chọn phương tiện thuê theo giờ'
                   : 'Chọn phương tiện di chuyển',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleLarge,

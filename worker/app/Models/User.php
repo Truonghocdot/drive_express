@@ -84,6 +84,12 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasOne(Wallet::class);
     }
 
+    /** @return HasOne<LoyaltyAccount, $this> */
+    public function loyaltyAccount(): HasOne
+    {
+        return $this->hasOne(LoyaltyAccount::class);
+    }
+
     /** @return HasMany<UserNotification, $this> */
     public function appNotifications(): HasMany
     {

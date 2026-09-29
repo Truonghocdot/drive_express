@@ -38,6 +38,12 @@ class ClientAppController extends ChangeNotifier {
   List<AppNotificationSummary> notifications = const [];
   int unreadNotificationCount = 0;
   List<SupportTicketSummary> tickets = const [];
+  List<VoucherSummary> vouchers = const [];
+  String? selectedVoucherCode;
+  List<LoyaltyRewardSummary> loyaltyRewards = const [];
+  List<LoyaltyTransactionSummary> loyaltyTransactions = const [];
+  LoyaltyAccountSummary? loyaltyAccount;
+  List<FavoriteAddress> favoriteAddresses = const [];
   bool initializing = true;
   bool busy = false;
   String? error;
@@ -119,6 +125,8 @@ class ClientAppController extends ChangeNotifier {
       _startPolling();
     }, showBusy: false);
     if (authenticated) unawaited(loadNotifications());
+    if (authenticated) unawaited(loadCommerce());
+    if (authenticated) unawaited(loadFavoriteAddresses());
     initializing = false;
     notifyListeners();
   }
@@ -139,6 +147,8 @@ class ClientAppController extends ChangeNotifier {
       _startPolling();
     });
     if (authenticated) unawaited(loadNotifications());
+    if (authenticated) unawaited(loadCommerce());
+    if (authenticated) unawaited(loadFavoriteAddresses());
   }
 
   Future<void> register({
@@ -185,6 +195,8 @@ class ClientAppController extends ChangeNotifier {
       _startPolling();
     });
     if (authenticated) unawaited(loadNotifications());
+    if (authenticated) unawaited(loadCommerce());
+    if (authenticated) unawaited(loadFavoriteAddresses());
   }
 
   Future<void> resetPassword({
@@ -231,7 +243,10 @@ class ClientAppController extends ChangeNotifier {
       quotes = draft.service == ServiceKind.drive
           ? await gateway.createQuoteBatch(_session, draft)
           : [await gateway.createQuote(_session, draft)];
-      selectedQuote = draft.service == ServiceKind.delivery && quotes.isNotEmpty
+      selectedQuote =
+          (draft.service == ServiceKind.delivery ||
+                  draft.service == ServiceKind.hourly) &&
+              quotes.isNotEmpty
           ? quotes.first
           : null;
       _createKey = null;
@@ -367,6 +382,79 @@ class ClientAppController extends ChangeNotifier {
     await _guard(() async => tickets = await support.loadTickets(_session));
   }
 
+  BookingCommerceGateway? get commerceGateway =>
+      gateway is BookingCommerceGateway
+      ? gateway as BookingCommerceGateway
+      : null;
+
+  Future<void> loadCommerce() async {
+    final commerce = commerceGateway;
+    if (commerce == null) return;
+    await _guard(() async {
+      vouchers = await commerce.loadVouchers(_session);
+      loyaltyAccount = await commerce.loadLoyaltyAccount(_session);
+      loyaltyRewards = await commerce.loadLoyaltyRewards(_session);
+      loyaltyTransactions = await commerce.loadLoyaltyTransactions(_session);
+    });
+  }
+
+  Future<LoyaltyRedeemSummary?> redeemLoyaltyReward(String rewardId) async {
+    final commerce = commerceGateway;
+    if (commerce == null) return null;
+    LoyaltyRedeemSummary? result;
+    await _guard(() async {
+      result = await commerce.redeemLoyaltyReward(
+        session: _session,
+        rewardId: rewardId,
+        idempotencyKey: newRequestId(),
+      );
+      loyaltyAccount = result!.account;
+      vouchers = await commerce.loadVouchers(_session);
+      loyaltyRewards = await commerce.loadLoyaltyRewards(_session);
+    });
+    return result;
+  }
+
+  void selectVoucher(String code) {
+    selectedVoucherCode = code;
+    notifyListeners();
+  }
+
+  FavoriteAddressStore? get favoriteAddressStore =>
+      sessionStore is FavoriteAddressStore
+      ? sessionStore as FavoriteAddressStore
+      : null;
+
+  String get _favoriteNamespace => customerProfile?.id ?? 'anonymous';
+
+  Future<void> loadFavoriteAddresses() async {
+    final store = favoriteAddressStore;
+    if (store == null || customerProfile == null) return;
+    favoriteAddresses = await store.readFavoriteAddresses(_favoriteNamespace);
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<void> saveFavoriteAddress(FavoriteAddress address) async {
+    final store = favoriteAddressStore;
+    if (store == null || customerProfile == null) return;
+    favoriteAddresses = [
+      ...favoriteAddresses.where((item) => item.label != address.label),
+      address,
+    ].take(10).toList(growable: false);
+    await store.writeFavoriteAddresses(_favoriteNamespace, favoriteAddresses);
+    notifyListeners();
+  }
+
+  Future<void> deleteFavoriteAddress(FavoriteAddress address) async {
+    final store = favoriteAddressStore;
+    if (store == null || customerProfile == null) return;
+    favoriteAddresses = favoriteAddresses
+        .where((item) => item.label != address.label)
+        .toList(growable: false);
+    await store.writeFavoriteAddresses(_favoriteNamespace, favoriteAddresses);
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     try {
       await accountGateway?.logout(_session);
@@ -394,6 +482,12 @@ class ClientAppController extends ChangeNotifier {
     notifications = const [];
     unreadNotificationCount = 0;
     tickets = const [];
+    vouchers = const [];
+    selectedVoucherCode = null;
+    loyaltyRewards = const [];
+    loyaltyTransactions = const [];
+    loyaltyAccount = null;
+    favoriteAddresses = const [];
     notifyListeners();
   }
 

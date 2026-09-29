@@ -56,6 +56,21 @@ class PricingRuleForm
                         ->minValue(0)
                         ->suffix('VND/km')
                         ->required(),
+                    TextInput::make('hourly_rate')
+                        ->label('Giá mỗi giờ (Thuê giờ)')
+                        ->numeric()
+                        ->minValue(0)
+                        ->suffix('VND/giờ'),
+                    TextInput::make('minimum_duration_hours')
+                        ->label('Số giờ tối thiểu')
+                        ->numeric()
+                        ->minValue(1)
+                        ->maxValue(12),
+                    TextInput::make('maximum_duration_hours')
+                        ->label('Số giờ tối đa')
+                        ->numeric()
+                        ->minValue(1)
+                        ->maxValue(12),
                     TextInput::make('driver_rate')
                         ->label('Tỷ lệ tài xế nhận')
                         ->numeric()

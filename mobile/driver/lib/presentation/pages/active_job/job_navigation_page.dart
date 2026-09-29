@@ -215,7 +215,8 @@ class _JobNavigationPageState extends State<JobNavigationPage> {
           'Chưa cấu hình GOONG_API_KEY cho ứng dụng tài xế.',
         );
       }
-      final target = _usesDropoff(offer.serviceStatus)
+      final target =
+          offer.serviceType != 'HOURLY' && _usesDropoff(offer.serviceStatus)
           ? NavigationCoordinate(
               latitude: offer.dropoffLatitude,
               longitude: offer.dropoffLongitude,

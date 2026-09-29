@@ -47,6 +47,7 @@ class StoreRideBookingRequest extends FormRequest
             'stops.pickup.note' => ['nullable', 'string', 'max:1000'],
             'stops.dropoff' => ['sometimes', 'array:note'],
             'stops.dropoff.note' => ['nullable', 'string', 'max:1000'],
+            'duration_hours' => ['prohibited'],
         ];
     }
 }

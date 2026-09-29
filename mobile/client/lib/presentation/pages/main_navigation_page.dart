@@ -5,6 +5,7 @@ import 'home/home_page.dart';
 import 'order/order_history_page.dart';
 import 'profile/notifications_page.dart';
 import 'profile/profile_page.dart';
+import 'promotion/promotions_page.dart';
 
 class MainNavigationPage extends StatefulWidget {
   const MainNavigationPage({super.key, required this.controller});
@@ -18,52 +19,165 @@ class MainNavigationPage extends StatefulWidget {
 class _MainNavigationPageState extends State<MainNavigationPage> {
   int index = 0;
 
+  static const _titles = ['Trang chủ', 'Hoạt động', 'Ưu đãi', 'Tài khoản'];
+  static const _eyebrows = [
+    'VỊ TRÍ HIỆN TẠI',
+    'VỊ TRÍ ĐÓN',
+    'DÀNH CHO BẠN',
+    'TÀI KHOẢN',
+  ];
+
   @override
   Widget build(BuildContext context) {
     final pages = [
       HomePage(controller: widget.controller),
       OrderHistoryPage(controller: widget.controller),
+      PromotionsPage(controller: widget.controller),
       ProfilePage(controller: widget.controller),
     ];
-    const titles = ['Trang chủ', 'Đơn hàng', 'Tài khoản'];
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(titles[index]),
-        actions: [
+
+    return AnimatedBuilder(
+      animation: widget.controller,
+      builder: (context, _) => Scaffold(
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              _Header(
+                title: _titles[index],
+                eyebrow: _eyebrows[index],
+                unreadCount: widget.controller.unreadNotificationCount,
+                onNotifications: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        NotificationsPage(controller: widget.controller),
+                  ),
+                ),
+                onProfile: () => setState(() => index = 3),
+              ),
+              Expanded(
+                child: IndexedStack(index: index, children: pages),
+              ),
+            ],
+          ),
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: index,
+          onDestinationSelected: (value) => setState(() => index = value),
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home),
+              label: 'Trang chủ',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long),
+              label: 'Hoạt động',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.redeem_outlined),
+              selectedIcon: Icon(Icons.redeem),
+              label: 'Ưu đãi',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: 'Tài khoản',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.title,
+    required this.eyebrow,
+    required this.unreadCount,
+    required this.onNotifications,
+    required this.onProfile,
+  });
+
+  final String title;
+  final String eyebrow;
+  final int unreadCount;
+  final VoidCallback onNotifications;
+  final VoidCallback onProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      decoration: BoxDecoration(
+        color: colors.surface.withValues(alpha: .94),
+        border: Border(bottom: BorderSide(color: colors.surfaceContainer)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLow,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              title == 'Trang chủ'
+                  ? Icons.near_me_outlined
+                  : Icons.location_on_outlined,
+              color: colors.secondary,
+              size: 21,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  eyebrow,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                    letterSpacing: .6,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.expand_more, size: 18, color: colors.outline),
+                  ],
+                ),
+              ],
+            ),
+          ),
           IconButton(
             key: const Key('customer-notifications-button'),
             tooltip: 'Thông báo',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) =>
-                    NotificationsPage(controller: widget.controller),
-              ),
+            onPressed: onNotifications,
+            icon: _NotificationBell(unreadCount: unreadCount),
+          ),
+          const SizedBox(width: 2),
+          InkWell(
+            onTap: onProfile,
+            customBorder: const CircleBorder(),
+            child: CircleAvatar(
+              radius: 17,
+              backgroundColor: colors.primary,
+              child: Icon(Icons.person, color: colors.onPrimary, size: 18),
             ),
-            icon: _NotificationBell(
-              unreadCount: widget.controller.unreadNotificationCount,
-            ),
-          ),
-        ],
-      ),
-      body: IndexedStack(index: index, children: pages),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (value) => setState(() => index = value),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Trang chủ',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long),
-            label: 'Đơn hàng',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Tài khoản',
           ),
         ],
       ),
@@ -96,7 +210,7 @@ class _NotificationBell extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 3),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.error,
+                color: Theme.of(context).colorScheme.secondary,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: Theme.of(context).colorScheme.surface,
@@ -106,7 +220,7 @@ class _NotificationBell extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.onError,
+                  color: Theme.of(context).colorScheme.onSecondary,
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                 ),

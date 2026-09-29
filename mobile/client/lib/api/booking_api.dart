@@ -8,7 +8,8 @@ import 'request_id.dart';
 
 enum ServiceKind {
   delivery('DELIVERY'),
-  drive('DRIVE');
+  drive('DRIVE'),
+  hourly('HOURLY');
 
   const ServiceKind(this.apiValue);
   final String apiValue;
@@ -96,7 +97,7 @@ class BookingDraft {
   const BookingDraft({
     required this.service,
     required this.pickup,
-    required this.dropoff,
+    this.dropoff,
     required this.goodsType,
     required this.weightKg,
     required this.passengerCount,
@@ -106,11 +107,12 @@ class BookingDraft {
     this.vehicleTypeIds,
     this.passengerName,
     this.passengerPhone,
+    this.durationHours,
   });
 
   final ServiceKind service;
   final LocationDraft pickup;
-  final LocationDraft dropoff;
+  final LocationDraft? dropoff;
   final String goodsType;
   final double weightKg;
   final int passengerCount;
@@ -120,6 +122,7 @@ class BookingDraft {
   final List<String>? vehicleTypeIds;
   final String? passengerName;
   final String? passengerPhone;
+  final int? durationHours;
 }
 
 class QuoteSummary {
@@ -158,9 +161,7 @@ class QuoteSummary {
 
     return QuoteSummary(
       id: json['id'] as String,
-      service: json['service_type'] == ServiceKind.delivery.apiValue
-          ? ServiceKind.delivery
-          : ServiceKind.drive,
+      service: _serviceKind(json['service_type']),
       grossFare: (pricing['gross_fare'] as num).toDouble(),
       voucherDiscount: (pricing['voucher_discount'] as num).toDouble(),
       customerPayable: (pricing['customer_payable'] as num).toDouble(),
@@ -221,9 +222,7 @@ class ServiceRequestSummary {
 
     return ServiceRequestSummary(
       id: json['id'] as String,
-      service: json['service_type'] == ServiceKind.delivery.apiValue
-          ? ServiceKind.delivery
-          : ServiceKind.drive,
+      service: _serviceKind(json['service_type']),
       status: json['status'] as String,
       paymentMethod: payment['method'] == PaymentChoice.wallet.apiValue
           ? PaymentChoice.wallet
@@ -434,6 +433,144 @@ class CustomerProfileSummary {
   }
 }
 
+ServiceKind _serviceKind(Object? value) => switch (value?.toString()) {
+  'DELIVERY' => ServiceKind.delivery,
+  'HOURLY' => ServiceKind.hourly,
+  _ => ServiceKind.drive,
+};
+
+class VoucherSummary {
+  const VoucherSummary({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.discountType,
+    required this.discountValue,
+    required this.endsAt,
+    this.maxDiscountAmount,
+    this.serviceScope,
+    this.minimumOrderAmount = 0,
+    this.isOwned = false,
+  });
+
+  final String id;
+  final String code;
+  final String name;
+  final String discountType;
+  final double discountValue;
+  final double? maxDiscountAmount;
+  final String? serviceScope;
+  final double minimumOrderAmount;
+  final DateTime endsAt;
+  final bool isOwned;
+
+  factory VoucherSummary.fromJson(Map<String, dynamic> json) => VoucherSummary(
+    id: json['id'].toString(),
+    code: json['code'].toString(),
+    name: json['name'].toString(),
+    discountType: json['discount_type'].toString(),
+    discountValue: (json['discount_value'] as num).toDouble(),
+    maxDiscountAmount: (json['max_discount_amount'] as num?)?.toDouble(),
+    serviceScope: json['service_scope']?.toString(),
+    minimumOrderAmount: (json['minimum_order_amount'] as num?)?.toDouble() ?? 0,
+    endsAt: DateTime.parse(json['ends_at'].toString()),
+    isOwned: json['is_owned'] == true,
+  );
+}
+
+class LoyaltyAccountSummary {
+  const LoyaltyAccountSummary({
+    required this.id,
+    required this.pointsBalance,
+    required this.lifetimeEarned,
+    required this.lifetimeRedeemed,
+    required this.tier,
+  });
+
+  final String id;
+  final int pointsBalance;
+  final int lifetimeEarned;
+  final int lifetimeRedeemed;
+  final String tier;
+
+  factory LoyaltyAccountSummary.fromJson(Map<String, dynamic> json) =>
+      LoyaltyAccountSummary(
+        id: json['id'].toString(),
+        pointsBalance: (json['points_balance'] as num).toInt(),
+        lifetimeEarned: (json['lifetime_earned'] as num).toInt(),
+        lifetimeRedeemed: (json['lifetime_redeemed'] as num).toInt(),
+        tier: json['tier'].toString(),
+      );
+}
+
+class LoyaltyRewardSummary {
+  const LoyaltyRewardSummary({
+    required this.id,
+    required this.name,
+    required this.pointsCost,
+    required this.discountType,
+    required this.discountValue,
+    this.serviceScope,
+    this.stock,
+  });
+
+  final String id;
+  final String name;
+  final int pointsCost;
+  final String discountType;
+  final double discountValue;
+  final String? serviceScope;
+  final int? stock;
+
+  factory LoyaltyRewardSummary.fromJson(Map<String, dynamic> json) =>
+      LoyaltyRewardSummary(
+        id: json['id'].toString(),
+        name: json['name'].toString(),
+        pointsCost: (json['points_cost'] as num).toInt(),
+        discountType: json['discount_type'].toString(),
+        discountValue: (json['discount_value'] as num).toDouble(),
+        serviceScope: json['service_scope']?.toString(),
+        stock: (json['stock'] as num?)?.toInt(),
+      );
+}
+
+class LoyaltyTransactionSummary {
+  const LoyaltyTransactionSummary({
+    required this.id,
+    required this.type,
+    required this.points,
+    required this.balanceAfter,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String type;
+  final int points;
+  final int balanceAfter;
+  final DateTime createdAt;
+
+  factory LoyaltyTransactionSummary.fromJson(Map<String, dynamic> json) =>
+      LoyaltyTransactionSummary(
+        id: json['id'].toString(),
+        type: json['type'].toString(),
+        points: (json['points'] as num).toInt(),
+        balanceAfter: (json['balance_after'] as num).toInt(),
+        createdAt: DateTime.parse(json['created_at'].toString()),
+      );
+}
+
+class LoyaltyRedeemSummary {
+  const LoyaltyRedeemSummary({
+    required this.account,
+    required this.voucher,
+    required this.transaction,
+  });
+
+  final LoyaltyAccountSummary account;
+  final VoucherSummary voucher;
+  final LoyaltyTransactionSummary transaction;
+}
+
 class SupportTicketSummary {
   const SupportTicketSummary({
     required this.id,
@@ -589,6 +726,20 @@ abstract interface class BookingGateway {
   });
 }
 
+abstract interface class BookingCommerceGateway {
+  Future<List<VoucherSummary>> loadVouchers(BookingSession session);
+  Future<LoyaltyAccountSummary> loadLoyaltyAccount(BookingSession session);
+  Future<List<LoyaltyRewardSummary>> loadLoyaltyRewards(BookingSession session);
+  Future<List<LoyaltyTransactionSummary>> loadLoyaltyTransactions(
+    BookingSession session,
+  );
+  Future<LoyaltyRedeemSummary> redeemLoyaltyReward({
+    required BookingSession session,
+    required String rewardId,
+    required String idempotencyKey,
+  });
+}
+
 abstract interface class BookingHistoryGateway {
   Future<List<ServiceRequestSummary>> loadServiceRequests(
     BookingSession session,
@@ -608,7 +759,8 @@ class BookingApi
         BookingSupportGateway,
         CustomerAccountGateway,
         BookingHistoryGateway,
-        BookingTrackingGateway {
+        BookingTrackingGateway,
+        BookingCommerceGateway {
   BookingApi({
     ApiTransport? transport,
     this.deviceId = 'customer-app-session',
@@ -840,10 +992,15 @@ class BookingApi
         'booking_type': draft.scheduledAt == null ? 'NOW' : 'SCHEDULED',
         'scheduled_at': ?draft.scheduledAt?.toUtc().toIso8601String(),
         'pickup': draft.pickup.toJson(),
-        'dropoff': draft.dropoff.toJson(),
-        'service_payload': draft.service == ServiceKind.delivery
-            ? {'goods_type': draft.goodsType, 'weight_kg': draft.weightKg}
-            : {'passenger_count': draft.passengerCount},
+        if (draft.dropoff case final dropoff?) 'dropoff': dropoff.toJson(),
+        'service_payload': switch (draft.service) {
+          ServiceKind.delivery => {
+            'goods_type': draft.goodsType,
+            'weight_kg': draft.weightKg,
+          },
+          ServiceKind.hourly => {'duration_hours': draft.durationHours},
+          ServiceKind.drive => {'passenger_count': draft.passengerCount},
+        },
         'voucher_code': ?draft.voucherCode,
       },
     );
@@ -870,7 +1027,7 @@ class BookingApi
         'booking_type': draft.scheduledAt == null ? 'NOW' : 'SCHEDULED',
         'scheduled_at': ?draft.scheduledAt?.toUtc().toIso8601String(),
         'pickup': draft.pickup.toJson(),
-        'dropoff': draft.dropoff.toJson(),
+        'dropoff': draft.dropoff?.toJson(),
         'service_payload': {'passenger_count': draft.passengerCount},
         'voucher_code': ?draft.voucherCode,
       },
@@ -1085,6 +1242,82 @@ class BookingApi
           if (comment?.trim().isNotEmpty ?? false) 'comment': comment!.trim(),
         },
       ),
+    );
+  }
+
+  @override
+  Future<List<VoucherSummary>> loadVouchers(BookingSession session) async {
+    return _listData(
+      await _transport.send(
+        method: 'GET',
+        uri: _uri(session, '/promotions/vouchers'),
+        token: session.token,
+      ),
+    ).map(VoucherSummary.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<LoyaltyAccountSummary> loadLoyaltyAccount(
+    BookingSession session,
+  ) async {
+    return LoyaltyAccountSummary.fromJson(
+      _data(
+        await _transport.send(
+          method: 'GET',
+          uri: _uri(session, '/loyalty/account'),
+          token: session.token,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<List<LoyaltyRewardSummary>> loadLoyaltyRewards(
+    BookingSession session,
+  ) async {
+    return _listData(
+      await _transport.send(
+        method: 'GET',
+        uri: _uri(session, '/loyalty/rewards'),
+        token: session.token,
+      ),
+    ).map(LoyaltyRewardSummary.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<List<LoyaltyTransactionSummary>> loadLoyaltyTransactions(
+    BookingSession session,
+  ) async {
+    return _listData(
+      await _transport.send(
+        method: 'GET',
+        uri: _uri(session, '/loyalty/transactions'),
+        token: session.token,
+      ),
+    ).map(LoyaltyTransactionSummary.fromJson).toList(growable: false);
+  }
+
+  @override
+  Future<LoyaltyRedeemSummary> redeemLoyaltyReward({
+    required BookingSession session,
+    required String rewardId,
+    required String idempotencyKey,
+  }) async {
+    final data = _data(
+      await _transport.send(
+        method: 'POST',
+        uri: _uri(session, '/loyalty/rewards/$rewardId/redeem'),
+        token: session.token,
+        headers: {'Idempotency-Key': idempotencyKey},
+      ),
+    );
+    final account = data['account'] as Map<String, dynamic>;
+    final voucher = data['voucher'] as Map<String, dynamic>;
+    final transaction = data['transaction'] as Map<String, dynamic>;
+    return LoyaltyRedeemSummary(
+      account: LoyaltyAccountSummary.fromJson(account),
+      voucher: VoucherSummary.fromJson(voucher),
+      transaction: LoyaltyTransactionSummary.fromJson(transaction),
     );
   }
 

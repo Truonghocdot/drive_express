@@ -85,6 +85,7 @@ Mỗi vòng tìm kiếm có cấu hình riêng, ví dụ tăng bán kính hoặc
 
 ## Sự kiện
 
+- Worker/outbox hiện phát event generic `OFFER_CREATED` cho cả Delivery và Drive; `service` route event theo payload `service_request_id` và user id. Các tên `DELIVERY_OFFERED` bên dưới là domain alias dùng trong flow, không phải literal event envelope hiện tại.
 - `DELIVERY_OFFERED`
 - `DELIVERY_OFFER_ACCEPTED`
 - `DELIVERY_OFFER_EXPIRED`

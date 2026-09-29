@@ -11,13 +11,17 @@ use App\Models\Payment;
 use App\Models\Refund;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Services\Loyalty\LoyaltyService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class RefundService
 {
-    public function __construct(private readonly LedgerService $ledger) {}
+    public function __construct(
+        private readonly LedgerService $ledger,
+        private readonly LoyaltyService $loyalty,
+    ) {}
 
     /** @param array<string, mixed>|null $evidence */
     public function refund(
@@ -104,6 +108,8 @@ class RefundService
                 'ledger_transaction_id' => $ledgerId,
                 'completed_at' => now(),
             ])->save();
+            $payment->setRelation('payer', $payment->payer);
+            $this->loyalty->reverseForRefund($payment, $amount, $refund->id);
             $totalRefunded = $alreadyRefunded + $amount;
             $payment->forceFill([
                 'status' => abs($totalRefunded - $payment->customer_payable) <= 0.01

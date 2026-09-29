@@ -43,7 +43,16 @@ class ServiceRequestService
     /** @param array<string, mixed> $data */
     public function createRide(User $user, array $data, string $idempotencyKey): ServiceRequest
     {
-        return $this->create($user, $data, $idempotencyKey, ServiceType::Drive);
+        $serviceType = Quote::query()
+            ->where('public_id', $data['quote_id'])
+            ->value('service_type');
+
+        return $this->create(
+            $user,
+            $data,
+            $idempotencyKey,
+            $serviceType === ServiceType::Hourly->value ? ServiceType::Hourly : ServiceType::Drive,
+        );
     }
 
     /** @param array<string, mixed> $data */
@@ -111,7 +120,7 @@ class ServiceRequestService
             $this->createStops($serviceRequest, $quote, $data);
             $payment = Payment::query()->create([
                 'service_request_id' => $serviceRequest->id,
-                'payer_type' => $serviceType === ServiceType::Drive
+                'payer_type' => $serviceType !== ServiceType::Delivery
                     ? PayerType::Orderer
                     : PayerType::from((string) $data['payer_type']),
                 'payer_user_id' => $payer->id,
@@ -152,13 +161,13 @@ class ServiceRequestService
             ]);
             $this->outbox($serviceRequest, match ($serviceType) {
                 ServiceType::Delivery => 'DELIVERY_ORDER_CREATED',
-                ServiceType::Drive => 'RIDE_BOOKING_CREATED',
+                ServiceType::Drive, ServiceType::Hourly => 'RIDE_BOOKING_CREATED',
             });
 
             if ($status === ServiceRequestStatus::SearchingDriver) {
                 $this->outbox($serviceRequest, match ($serviceType) {
                     ServiceType::Delivery => 'DELIVERY_SEARCH_REQUESTED',
-                    ServiceType::Drive => 'RIDE_SEARCH_REQUESTED',
+                    ServiceType::Drive, ServiceType::Hourly => 'RIDE_SEARCH_REQUESTED',
                 });
             }
 
@@ -219,7 +228,7 @@ class ServiceRequestService
     /** @param array<string, mixed> $data */
     private function resolvePayer(User $user, array $data, ServiceType $serviceType): User
     {
-        if ($serviceType === ServiceType::Drive || $data['payer_type'] === PayerType::Orderer->value) {
+        if ($serviceType !== ServiceType::Delivery || $data['payer_type'] === PayerType::Orderer->value) {
             return $user;
         }
 
@@ -237,7 +246,10 @@ class ServiceRequestService
     /** @param array<string, mixed> $data */
     private function createStops(ServiceRequest $request, Quote $quote, array $data): void
     {
-        foreach ([StopType::Pickup, StopType::Dropoff] as $stopType) {
+        $stopTypes = $quote->service_type === ServiceType::Hourly
+            ? [StopType::Pickup]
+            : [StopType::Pickup, StopType::Dropoff];
+        foreach ($stopTypes as $stopType) {
             $snapshot = $stopType === StopType::Pickup
                 ? $quote->pickup_snapshot
                 : $quote->dropoff_snapshot;
@@ -292,6 +304,9 @@ class ServiceRequestService
         RideBooking::query()->create([
             'service_request_id' => $request->id,
             'passenger_count' => (int) ($quote->service_payload['passenger_count'] ?? 1),
+            'duration_hours' => $quote->service_type === ServiceType::Hourly
+                ? (int) ($quote->service_payload['duration_hours'] ?? 1)
+                : null,
             'passenger_name' => $data['passenger_name'] ?? null,
             'passenger_phone' => $data['passenger_phone'] ?? null,
             'route_version' => 1,

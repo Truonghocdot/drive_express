@@ -27,6 +27,7 @@ class PricingRulesTable
                 TextColumn::make('base_distance_km')->label('Số km cơ bản')->numeric(decimalPlaces: 2),
                 TextColumn::make('base_fare')->money('VND')->sortable(),
                 TextColumn::make('price_per_extra_km')->label('Giá mỗi km thêm')->money('VND')->sortable(),
+                TextColumn::make('hourly_rate')->label('Giá mỗi giờ')->money('VND')->sortable(),
                 TextColumn::make('driver_rate')->numeric(decimalPlaces: 2),
                 TextColumn::make('effective_from')->dateTime()->sortable(),
                 TextColumn::make('effective_to')->dateTime()->placeholder('Không giới hạn'),

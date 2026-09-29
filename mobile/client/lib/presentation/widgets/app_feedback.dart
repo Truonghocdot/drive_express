@@ -11,6 +11,7 @@ String formatClientValue(String value) {
   return switch (value) {
     'DELIVERY' => 'Giao hàng',
     'DRIVE' => 'Đặt xe',
+    'HOURLY' => 'Thuê giờ',
     'WALLET' => 'Ví',
     'CASH' => 'Tiền mặt',
     'ORDERER' => 'Người đặt',

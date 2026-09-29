@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'started_at',
     'ended_at',
     'route_version',
+    'duration_hours',
 ])]
 class RideBooking extends Model
 {
@@ -40,6 +41,7 @@ class RideBooking extends Model
             'started_at' => 'immutable_datetime',
             'ended_at' => 'immutable_datetime',
             'route_version' => 'integer',
+            'duration_hours' => 'integer',
         ];
     }
 }

@@ -65,6 +65,8 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
                       Text(
                         quote.service == ServiceKind.delivery
                             ? 'Đơn giao hàng · Xe máy'
+                            : quote.service == ServiceKind.hourly
+                            ? 'Thuê giờ · ${quote.vehicleName ?? (quote.vehicleKey == 'MOTORBIKE' ? 'Xe máy' : 'Ô tô 4 chỗ')}'
                             : 'Chuyến xe · ${quote.vehicleName ?? (quote.vehicleKey == 'MOTORBIKE' ? 'Xe máy' : 'Ô tô 4 chỗ')}',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
@@ -83,11 +85,15 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
                         '${(quote.distanceMeters / 1000).toStringAsFixed(1)} km · '
                         '${(quote.durationSeconds / 60).ceil()} phút',
                       ),
-                      if (quote.service == ServiceKind.drive) ...[
+                      if (quote.service != ServiceKind.delivery) ...[
                         const SizedBox(height: 6),
                         Text(
                           '${widget.controller.quoteDraft?.passengerCount ?? 1} hành khách',
                         ),
+                        if (quote.service == ServiceKind.hourly)
+                          Text(
+                            '${widget.controller.quoteDraft?.durationHours ?? 1} giờ thuê',
+                          ),
                         if (widget.controller.quoteDraft?.passengerName
                             case final name?)
                           Text('Người đi: $name'),

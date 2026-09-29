@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../../client_app_controller.dart';
 import '../../widgets/app_feedback.dart';
+import 'saved_addresses_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key, required this.controller});
@@ -13,20 +14,22 @@ class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final account = controller.customerProfile;
+    final colors = Theme.of(context).colorScheme;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
       children: [
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 26,
-                  backgroundColor: const Color(0xFFE5F2EC),
+                  radius: 24,
+                  backgroundColor: colors.surfaceContainerLow,
                   child: Icon(
                     Icons.person_outline,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: colors.primary,
+                    size: 24,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -38,10 +41,14 @@ class ProfilePage extends StatelessWidget {
                         account?.name ?? 'Tài khoản khách hàng',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 2),
-                      Text(account?.phone ?? 'Số điện thoại chưa cập nhật'),
+                      Text(
+                        account?.phone ?? 'Số điện thoại chưa cập nhật',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       if (account?.email?.isNotEmpty ?? false)
                         Text(
                           account!.email!,
@@ -55,35 +62,126 @@ class ProfilePage extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 14),
-        _item(
-          context,
-          Icons.account_balance_wallet_outlined,
-          'Ví lạnh',
-          'Xem số dư và tạo mã nạp tiền',
-          () => _wallet(context),
+        const SizedBox(height: 8),
+        Card(
+          child: _item(
+            context,
+            Icons.logout,
+            'Đăng xuất',
+            'Thu hồi phiên trên thiết bị này',
+            controller.logout,
+            danger: true,
+          ),
         ),
-        _item(
-          context,
-          Icons.notifications_outlined,
-          'Thông báo',
-          'Cập nhật chuyến và hỗ trợ',
-          () => _notifications(context),
+        const SizedBox(height: 8),
+        Card(
+          color: colors.primary,
+          child: InkWell(
+            onTap: () => _wallet(context),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Số dư ví lạnh',
+                        style: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: colors.primaryFixedDim),
+                      ),
+                      Icon(
+                        Icons.visibility_outlined,
+                        color: colors.primaryFixedDim,
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    controller.wallet == null
+                        ? '—'
+                        : '${controller.wallet!.available.toStringAsFixed(0)} đ',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: colors.onPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _walletAction(
+                          context,
+                          Icons.add_circle_outline,
+                          'Nạp tiền',
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _walletAction(
+                          context,
+                          Icons.qr_code_2,
+                          'Quét mã',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        _item(
-          context,
-          Icons.support_agent_outlined,
-          'Yêu cầu hỗ trợ',
-          'Theo dõi và phản hồi ticket',
-          () => _tickets(context),
+        const SizedBox(height: 12),
+        Text(
+          'CÀI ĐẶT & TIỆN ÍCH',
+          style: Theme.of(context).textTheme.labelLarge
+              ?.copyWith(color: colors.onSurfaceVariant),
         ),
-        _item(
-          context,
-          Icons.logout,
-          'Đăng xuất',
-          'Thu hồi phiên trên thiết bị này',
-          controller.logout,
-          danger: true,
+        const SizedBox(height: 4),
+        Card(
+          child: Column(
+            children: [
+              _item(
+                context,
+                Icons.account_balance_wallet_outlined,
+                'Ví lạnh',
+                'Xem số dư và tạo mã nạp tiền',
+                () => _wallet(context),
+              ),
+              const Divider(height: 1, indent: 68),
+              _item(
+                context,
+                Icons.notifications_outlined,
+                'Thông báo',
+                'Cập nhật chuyến và hỗ trợ',
+                () => _notifications(context),
+              ),
+              const Divider(height: 1, indent: 68),
+              _item(
+                context,
+                Icons.bookmark_border,
+                'Địa chỉ đã lưu',
+                'Lưu tối đa 10 điểm đón và điểm đến',
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SavedAddressesPage(controller: controller),
+                  ),
+                ),
+              ),
+              const Divider(height: 1, indent: 68),
+              _item(
+                context,
+                Icons.support_agent_outlined,
+                'Yêu cầu hỗ trợ',
+                'Theo dõi và phản hồi ticket',
+                () => _tickets(context),
+              ),
+            ],
+          ),
         ),
         if (controller.error case final error?) ...[
           const SizedBox(height: 12),
@@ -101,24 +199,58 @@ class ProfilePage extends StatelessWidget {
     VoidCallback onTap, {
     bool danger = false,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Card(
-        child: ListTile(
-          leading: Icon(
-            icon,
-            color: danger ? Theme.of(context).colorScheme.error : null,
-          ),
-          title: Text(
-            title,
-            style: TextStyle(
-              color: danger ? Theme.of(context).colorScheme.error : null,
+    final colors = Theme.of(context).colorScheme;
+    return ListTile(
+      dense: true,
+      minVerticalPadding: 5,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: danger ? colors.errorContainer : colors.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: danger ? colors.error : colors.primary),
+      ),
+      title: Text(title, style: TextStyle(color: danger ? colors.error : null)),
+      subtitle: Text(subtitle),
+      trailing: Icon(Icons.chevron_right, color: colors.outline),
+      onTap: onTap,
+    );
+  }
+
+  Widget _walletAction(BuildContext context, IconData icon, String label) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: colors.onPrimary.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: colors.onPrimary, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: colors.onPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          subtitle: Text(subtitle),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: onTap,
-        ),
+        ],
       ),
     );
   }
@@ -246,9 +378,9 @@ class ProfilePage extends StatelessWidget {
       }
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể lưu ảnh QR.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Không thể lưu ảnh QR.')));
       }
     }
   }

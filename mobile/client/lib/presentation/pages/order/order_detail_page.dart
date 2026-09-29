@@ -28,12 +28,11 @@ class OrderDetailPage extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  current.service == ServiceKind.delivery
-                      ? 'Đơn giao hàng'
-                      : 'Chuyến xe',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                child: Text(switch (current.service) {
+                  ServiceKind.delivery => 'Đơn giao hàng',
+                  ServiceKind.hourly => 'Thuê giờ',
+                  ServiceKind.drive => 'Chuyến xe',
+                }, style: Theme.of(context).textTheme.titleLarge),
               ),
               StatusBadge(current.status),
             ],

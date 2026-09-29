@@ -62,6 +62,7 @@ Sau mỗi batch không có người nhận, hệ thống đóng offer hết hạ
 
 ## Sự kiện
 
+- Worker/outbox hiện phát event generic `OFFER_CREATED` cho cả Delivery và Drive; `service` route event theo payload `service_request_id` và user id. Các tên `RIDE_OFFERED` bên dưới là domain alias dùng trong flow, không phải literal event envelope hiện tại.
 - `RIDE_OFFERED`
 - `RIDE_OFFER_ACCEPTED`
 - `RIDE_OFFER_EXPIRED`

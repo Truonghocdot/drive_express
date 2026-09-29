@@ -208,7 +208,31 @@ class ServiceExecutionService
                     EvidenceType::Delivery,
                 ],
             ]
-            : [
+            : ($serviceType === ServiceType::Hourly
+                ? [
+                    'arrive' => [
+                        ServiceRequestStatus::DriverArriving,
+                        ServiceRequestStatus::DriverArrived,
+                        'HOURLY_DRIVER_ARRIVED',
+                        'PICKUP',
+                        null,
+                    ],
+                    'start' => [
+                        ServiceRequestStatus::DriverArrived,
+                        ServiceRequestStatus::InTrip,
+                        'HOURLY_STARTED',
+                        'PICKUP',
+                        null,
+                    ],
+                    'complete' => [
+                        ServiceRequestStatus::InTrip,
+                        ServiceRequestStatus::TripEnded,
+                        'HOURLY_ENDED',
+                        null,
+                        null,
+                    ],
+                ]
+                : [
                 'arrive' => [
                     ServiceRequestStatus::DriverArriving,
                     ServiceRequestStatus::DriverArrived,
@@ -230,7 +254,7 @@ class ServiceExecutionService
                     'DROPOFF',
                     null,
                 ],
-            ];
+                ]);
 
         if (! isset($definitions[$action])) {
             throw ValidationException::withMessages([

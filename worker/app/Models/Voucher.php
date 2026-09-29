@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -29,6 +30,7 @@ use Illuminate\Support\Str;
  * @property CarbonImmutable $starts_at
  * @property CarbonImmutable $ends_at
  * @property bool $is_active
+ * @property int|null $owner_user_id
  */
 #[Fillable([
     'code',
@@ -46,6 +48,7 @@ use Illuminate\Support\Str;
     'ends_at',
     'is_active',
     'created_by',
+    'owner_user_id',
 ])]
 class Voucher extends Model
 {
@@ -68,6 +71,18 @@ class Voucher extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'owner_user_id');
+    }
+
+    /** @return HasMany<VoucherRedemption, $this> */
+    public function redemptions(): HasMany
+    {
+        return $this->hasMany(VoucherRedemption::class);
     }
 
     /** @return array<string, string> */

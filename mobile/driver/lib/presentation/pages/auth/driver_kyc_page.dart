@@ -191,6 +191,15 @@ class _DriverKycPageState extends State<DriverKycPage> {
                   ),
                   CheckboxListTile(
                     contentPadding: EdgeInsets.zero,
+                    title: const Text('Thuê giờ'),
+                    value: state.selectedServices.contains('HOURLY'),
+                    onChanged: state.busy
+                        ? null
+                        : (value) =>
+                              state.toggleService('HOURLY', value ?? false),
+                  ),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
                     title: const Text('Đặt xe'),
                     value: state.selectedServices.contains('DRIVE'),
                     onChanged: state.busy
@@ -497,7 +506,8 @@ class _DriverKycPageState extends State<DriverKycPage> {
           type: document.type,
           name: document.name,
           bytes: document.bytes,
-          number: _numberController(document.type)?.text.trim() ?? document.number,
+          number:
+              _numberController(document.type)?.text.trim() ?? document.number,
           vehicleId: document.vehicleId,
         );
         if (!mounted || widget.controller.error != null) return;

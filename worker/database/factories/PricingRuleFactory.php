@@ -21,7 +21,8 @@ class PricingRuleFactory extends Factory
     public function definition(): array
     {
         return [
-            'service_type' => fake()->randomElement(ServiceType::cases()),
+            // Keep legacy fixtures distance-based; hourly rules opt in explicitly.
+            'service_type' => fake()->randomElement([ServiceType::Delivery, ServiceType::Drive]),
             'vehicle_type_id' => VehicleType::factory(),
             'base_distance_km' => 3,
             'base_fare' => 18_000,

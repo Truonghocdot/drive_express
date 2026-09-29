@@ -31,6 +31,8 @@ use App\Http\Controllers\Api\V1\Internal\NotificationDispatchController;
 use App\Http\Controllers\Api\V1\Internal\RevokePushTokenController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\PromotionController;
+use App\Http\Controllers\Api\V1\LoyaltyController;
 use App\Http\Controllers\Api\V1\QuoteController;
 use App\Http\Controllers\Api\V1\RatingController;
 use App\Http\Controllers\Api\V1\RealtimeAccessController;
@@ -81,6 +83,11 @@ Route::prefix('v1')->group(function (): void {
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('catalog/vehicle-types', VehicleTypeController::class);
+        Route::get('promotions/vouchers', [PromotionController::class, 'vouchers']);
+        Route::get('loyalty/account', [LoyaltyController::class, 'account']);
+        Route::get('loyalty/rewards', [LoyaltyController::class, 'rewards']);
+        Route::get('loyalty/transactions', [LoyaltyController::class, 'transactions']);
+        Route::post('loyalty/rewards/{reward}/redeem', [LoyaltyController::class, 'redeem']);
         Route::get('wallet', [WalletController::class, 'show']);
         Route::get('wallet/topups', [WalletTopupController::class, 'index']);
         Route::post('wallet/topups', [WalletTopupController::class, 'store']);

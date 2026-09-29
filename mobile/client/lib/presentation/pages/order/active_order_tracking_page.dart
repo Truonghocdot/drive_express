@@ -196,9 +196,11 @@ class ActiveOrderTrackingPage extends StatelessWidget {
     'IN_TRIP',
   }.contains(status);
 
-  String _serviceTitle(ServiceKind service) => service == ServiceKind.delivery
-      ? 'Đơn giao hàng'
-      : 'Chuyến xe';
+  String _serviceTitle(ServiceKind service) => switch (service) {
+    ServiceKind.delivery => 'Đơn giao hàng',
+    ServiceKind.hourly => 'Thuê giờ',
+    ServiceKind.drive => 'Chuyến xe',
+  };
 
   Future<void> _cancel(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -374,7 +376,8 @@ class _TrackingStatus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final meta = tracking.statusMeta;
-    final label = meta['label']?.toString() ?? formatClientValue(tracking.status);
+    final label =
+        meta['label']?.toString() ?? formatClientValue(tracking.status);
     final progress = (meta['progress_index'] as num?)?.toDouble() ?? 0;
     final total = (meta['progress_total'] as num?)?.toDouble() ?? 1;
     return Card(
@@ -389,14 +392,14 @@ class _TrackingStatus extends StatelessWidget {
               const Text('Đang tìm tài xế gần điểm đón của bạn.'),
             ],
             const SizedBox(height: 10),
-            LinearProgressIndicator(value: total == 0 ? null : progress / total),
+            LinearProgressIndicator(
+              value: total == 0 ? null : progress / total,
+            ),
             if (tracking.driverName case final name?) ...[
               const SizedBox(height: 12),
               Text('Tài xế: $name'),
               if (tracking.vehiclePlate case final plate?)
-                Text(
-                  'Xe ${tracking.vehicleType ?? ''} · $plate',
-                ),
+                Text('Xe ${tracking.vehicleType ?? ''} · $plate'),
             ],
             if (tracking.liveLocation case final location?) ...[
               const SizedBox(height: 6),

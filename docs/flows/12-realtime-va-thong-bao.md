@@ -30,19 +30,21 @@ Chat chỉ mở cho hai bên của assignment liên quan. Gọi điện dùng s�
 
 Thông báo in-app được lưu trong `notifications`; Socket.IO phát `notification:event` vào đúng `user:{public_user_id}`. Payload chỉ gồm id/type công khai, không gồm body chat, số tiền hoặc dữ liệu ledger. Khi socket/push lỗi, app đọc lại `/notifications` và `/notifications/unread` qua HTTPS.
 
+Mobile đăng ký FCM token trong `user_devices.push_token` lúc login/verify phone. `CUSTOMER_APP` dùng Firebase project customer, `DRIVER_APP` dùng Firebase project driver; `service` lấy token theo `app_type` rồi gửi bằng Firebase Admin credential tương ứng. Token lỗi được worker đánh dấu `revoked_at`.
+
 ## Luồng A - Phát trạng thái
 
 1. Laravel commit transition và outbox record.
 2. Publisher gửi domain event vào Redis Pub/Sub với `event_id`, `aggregate_id`, `aggregate_version`, `occurred_at`.
 3. Realtime service consume và deduplicate event.
 4. Service phát event vào room liên quan.
-5. Client chỉ áp dụng event có version mới hơn state đang giữ.
-6. Nếu thấy thiếu version hoặc reconnect, client gọi API lấy snapshot mới nhất.
+5. `service` deduplicate/guard `aggregate_version`; mobile driver hiện dùng event làm signal rồi reload offers/notifications/snapshot qua HTTPS, không tự mutate state nghiệp vụ từ payload event.
+6. Nếu socket mất hoặc reconnect, driver client authenticate lại và gọi worker API lấy snapshot mới nhất.
 
 ## Luồng B - Vị trí tài xế
 
-1. Khi online hoặc đang thực hiện dịch vụ, tài xế gửi `lat`, `lng`, `accuracy`, `heading`, `speed`, `captured_at` mỗi 1,5 giây.
-2. Service validate quyền, range, timestamp, accuracy và rate limit cho chu kỳ 1,5 giây.
+1. Khi online hoặc đang thực hiện dịch vụ, driver app gửi `lat`, `lng`, `accuracy`, `captured_at` mỗi 5 giây. Payload hiện không gửi `heading`/`speed` từ mobile driver.
+2. Worker validate quyền, range, timestamp, accuracy và cập nhật heartbeat theo chu kỳ 5 giây; Redis presence vẫn dùng TTL 15 giây.
 3. Vị trí gần nhất/presence được cập nhật trong Redis với TTL; database cập nhật một snapshot `last_location` và `last_location_at` cho tài xế.
 4. Khi có assignment, vị trí đã làm mờ/đủ dùng được phát vào đúng booking room.
 5. Sample mới ghi đè vị trí cũ; không persist timeline hoặc lịch sử hành trình.
@@ -54,11 +56,11 @@ Thông báo in-app được lưu trong `notifications`; Socket.IO phát `notific
 {
   "event_id": "uuid",
   "event_type": "RIDE_DRIVER_ARRIVED",
-  "aggregate_type": "ride_booking",
-  "aggregate_id": "uuid",
+  "aggregate_type": "SERVICE_REQUEST",
+  "aggregate_id": 123,
   "aggregate_version": 7,
   "occurred_at": "2026-09-21T10:00:00Z",
-  "data": {}
+  "payload": {}
 }
 ```
 
@@ -68,7 +70,7 @@ Payload gửi client chỉ chứa dữ liệu cần hiển thị. Event nội b�
 
 1. Client dùng exponential backoff có jitter khi reconnect.
 2. Sau reconnect, client authenticate lại và gọi API sync snapshot.
-3. Event quan trọng như offer, assigned, arrived, cancelled, completed có push fallback.
+3. Event quan trọng như offer, assigned, arrived, cancelled, completed có push fallback. `service` gửi FCM qua Firebase Admin; customer và driver dùng hai Firebase project riêng.
 4. Push chỉ báo có thay đổi; khi mở app client lấy trạng thái chuẩn qua API.
 5. Command nghiệp vụ khi socket lỗi luôn đi qua HTTPS, không phụ thuộc socket.
 
@@ -100,6 +102,6 @@ Tên public event có thể thêm namespace/version (`delivery.picked_up.v1`) kh
 - Event lặp/sai thứ tự không làm UI lùi trạng thái.
 - Reconnect luôn đồng bộ lại snapshot chuẩn.
 - Vị trí hết TTL loại tài xế khỏi matching.
-- Server rate limit và Redis TTL phải tương thích với chu kỳ vị trí 1,5 giây.
+- Server rate limit và Redis TTL phải tương thích với chu kỳ vị trí 5 giây và TTL presence 15 giây.
 - Database chỉ có một snapshot vị trí cuối trên mỗi tài xế; không phát sinh bản ghi lịch sử theo từng sample.
 - Redis/realtime tạm ngừng không làm mất transaction nghiệp vụ; event được phát lại từ outbox.

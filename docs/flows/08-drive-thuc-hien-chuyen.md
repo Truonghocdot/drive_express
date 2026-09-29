@@ -8,7 +8,7 @@
 
 - Booking có assignment active và ở `DRIVER_ASSIGNED` hoặc `DRIVER_ARRIVING`.
 - Tài xế/phương tiện đang hoạt động đúng với assignment.
-- Hai phía có kênh cập nhật trạng thái; tài xế gửi vị trí mỗi 1,5 giây.
+- Hai phía có kênh cập nhật trạng thái; driver app gửi vị trí mỗi 5 giây khi online/đang có assignment.
 
 ## Luồng A - Đến đón khách
 
@@ -24,7 +24,7 @@
 2. Tài xế gửi command bắt đầu chuyến với vị trí.
 3. Server kiểm tra xác nhận, geofence/reason ngoại lệ và booking đang `DRIVER_ARRIVED`.
 4. Server chuyển booking sang `IN_TRIP`, lưu `started_at` và route version; vị trí chỉ đọc từ snapshot cuối của tài xế, không tạo lịch sử hành trình.
-5. Hệ thống đóng quyền hủy thông thường và bắt đầu tracking mỗi 1,5 giây trong chuyến.
+5. Hệ thống đóng quyền hủy thông thường và bắt đầu tracking theo heartbeat 5 giây trong chuyến.
 
 ## Luồng C - Thực hiện và kết thúc
 
@@ -94,3 +94,10 @@ sequenceDiagram
 - Nhận chuyến không làm giảm số dư tài xế; thu nhập chỉ được quyết toán sau khi chuyến kết thúc.
 - Phần voucher tài trợ chỉ nằm trong khoản thanh toán/settlement, không tạo bút toán ghi có ví.
 - Với `CASH`, chỉ command hoàn thành idempotent của tài xế mới xác nhận `cash_collected`.
+
+## Mapping với driver mobile hiện tại
+
+- `JobNavigationPage` dùng Goong map thật, Directions và nút refresh route; không phải voice navigation.
+- `UpdateStatusPage` dùng nút thường cho transition trung gian và slide-to-confirm cho transition terminal.
+- Evidence được upload trước transition khi action yêu cầu `PICKUP` hoặc `DELIVERY` proof.
+- Chat, SOS và support được mở từ màn hình active job; transition vẫn đi qua HTTPS API với idempotency key.

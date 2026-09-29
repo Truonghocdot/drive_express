@@ -8,12 +8,14 @@ enum ServiceType: string implements HasLabel
 {
     case Delivery = 'DELIVERY';
     case Drive = 'DRIVE';
+    case Hourly = 'HOURLY';
 
     public function getLabel(): string
     {
         return match ($this) {
             self::Delivery => 'Giao hàng',
             self::Drive => 'Đặt xe',
+            self::Hourly => 'Thuê giờ',
         };
     }
 }

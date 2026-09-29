@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../api/booking_api.dart';
 import '../../../api/goong_location_api.dart';
+import '../../../api/session_store.dart';
 import '../../client_app_controller.dart';
 import '../../widgets/app_feedback.dart';
 import '../../widgets/goong_map_preview.dart';
@@ -16,11 +17,13 @@ class CreateOrderPage extends StatefulWidget {
     required this.controller,
     required this.service,
     this.isProxyBooking = false,
+    this.initialPickup,
   });
 
   final ClientAppController controller;
   final ServiceKind service;
   final bool isProxyBooking;
+  final FavoriteAddress? initialPickup;
 
   @override
   State<CreateOrderPage> createState() => _CreateOrderPageState();
@@ -33,9 +36,12 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   final goodsType = TextEditingController(text: 'GENERAL');
   final weight = TextEditingController(text: '5');
   final passengers = TextEditingController(text: '1');
+  final duration = TextEditingController(text: '1');
   final passengerName = TextEditingController();
   final passengerPhone = TextEditingController();
-  final voucher = TextEditingController();
+  late final TextEditingController voucher = TextEditingController(
+    text: widget.controller.selectedVoucherCode ?? '',
+  );
   GoongCoordinate _pickup = const GoongCoordinate(latitude: 0, longitude: 0);
   GoongCoordinate _dropoff = const GoongCoordinate(latitude: 0, longitude: 0);
   GoongRoute? _route;
@@ -47,6 +53,15 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   @override
   void initState() {
     super.initState();
+    final favorite = widget.initialPickup;
+    if (favorite != null) {
+      pickupAddress.text = favorite.address;
+      _pickup = GoongCoordinate(
+        latitude: favorite.latitude,
+        longitude: favorite.longitude,
+      );
+      _pickupConfirmed = true;
+    }
     // Location fields intentionally start empty. Coordinates must come from a
     // confirmed Goong place or the device location action.
   }
@@ -59,6 +74,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       goodsType,
       weight,
       passengers,
+      duration,
       passengerName,
       passengerPhone,
       voucher,
@@ -71,12 +87,19 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   @override
   Widget build(BuildContext context) {
     final delivery = widget.service == ServiceKind.delivery;
+    final hourly = widget.service == ServiceKind.hourly;
     final goong = widget.controller.goong;
     return AnimatedBuilder(
       animation: widget.controller,
       builder: (context, _) => Scaffold(
         appBar: AppBar(
-          title: Text(delivery ? 'Tạo đơn giao hàng' : 'Tạo chuyến xe'),
+          title: Text(
+            delivery
+                ? 'Tạo đơn giao hàng'
+                : hourly
+                ? 'Thuê xe theo giờ'
+                : 'Tạo chuyến xe',
+          ),
         ),
         body: Form(
           key: formKey,
@@ -85,10 +108,12 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
             children: [
               _StepHeader(
                 step: '1',
-                title: 'Chọn điểm đón và điểm đến',
-                subtitle: 'Tìm và chọn đúng địa chỉ để tài xế đến chính xác.',
+                title: hourly ? 'Chọn điểm đón' : 'Chọn điểm đón và điểm đến',
+                subtitle: hourly
+                    ? 'Tài xế sẽ phục vụ tại điểm đón trong thời lượng đã chọn.'
+                    : 'Tìm và chọn đúng địa chỉ để tài xế đến chính xác.',
               ),
-              const SizedBox(height: 12),
+              if (!hourly) const SizedBox(height: 12),
               GoongLocationField(
                 key: const Key('pickup-location-field'),
                 label: 'Điểm đón / lấy hàng',
@@ -112,46 +137,46 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                     ? null
                     : _useCurrentLocation,
               ),
-              const SizedBox(height: 12),
-              GoongLocationField(
-                key: const Key('dropoff-location-field'),
-                label: 'Điểm đến / giao hàng',
-                icon: Icons.location_on_outlined,
-                controller: dropoffAddress,
-                api: goong,
-                initialCoordinate: _dropoff,
-                onSelected: (place) {
-                  setState(() {
-                    _dropoff = place.coordinate;
-                    _dropoffConfirmed = true;
-                    dropoffAddress.text = place.address;
-                  });
-                  unawaited(_updateRoute());
-                },
-                onInputChanged: () => setState(() {
-                  _dropoffConfirmed = false;
-                  _route = null;
-                }),
-              ),
-              const SizedBox(height: 12),
-              if (_pickupConfirmed && _dropoffConfirmed)
+              if (!hourly) const SizedBox(height: 12),
+              if (!hourly)
+                GoongLocationField(
+                  key: const Key('dropoff-location-field'),
+                  label: 'Điểm đến / giao hàng',
+                  icon: Icons.location_on_outlined,
+                  controller: dropoffAddress,
+                  api: goong,
+                  initialCoordinate: _dropoff,
+                  onSelected: (place) {
+                    setState(() {
+                      _dropoff = place.coordinate;
+                      _dropoffConfirmed = true;
+                      dropoffAddress.text = place.address;
+                    });
+                    unawaited(_updateRoute());
+                  },
+                  onInputChanged: () => setState(() {
+                    _dropoffConfirmed = false;
+                    _route = null;
+                  }),
+                ),
+              if (!hourly && _pickupConfirmed && _dropoffConfirmed)
                 GoongMapPreview(
                   pickup: _pickup,
                   dropoff: _dropoff,
                   route: _route?.geometry,
                   mapKey: const String.fromEnvironment('GOONG_MAP_KEY'),
                 )
-              else
+              else if (!hourly)
                 const _MapPending(),
-              if (_route != null) ...[
+              if (!hourly && _route != null) ...[
                 const SizedBox(height: 8),
                 _RouteSummary(route: _route!),
               ],
-              if (_routeError case final routeError?) ...[
+              if (!hourly && _routeError != null) ...[
                 const SizedBox(height: 8),
-                ErrorBanner(message: routeError),
+                ErrorBanner(message: _routeError!),
               ],
-              if (goong?.configured != true) ...[
+              if (!hourly && goong?.configured != true) ...[
                 const SizedBox(height: 8),
                 const ErrorBanner(
                   message:
@@ -165,9 +190,15 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
               const SizedBox(height: 22),
               _StepHeader(
                 step: '2',
-                title: delivery ? 'Thông tin hàng hóa' : 'Thông tin chuyến xe',
+                title: delivery
+                    ? 'Thông tin hàng hóa'
+                    : hourly
+                    ? 'Thời lượng thuê'
+                    : 'Thông tin chuyến xe',
                 subtitle: delivery
                     ? 'Nhập đủ thông tin để hệ thống tính cước chính xác.'
+                    : hourly
+                    ? 'Chọn số giờ phục vụ, tối đa 12 giờ.'
                     : 'Chọn số hành khách và thời gian di chuyển.',
               ),
               const SizedBox(height: 12),
@@ -201,7 +232,22 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                     prefixIcon: Icon(Icons.scale_outlined),
                   ),
                 ),
-              ] else
+              ] else if (hourly)
+                TextFormField(
+                  controller: duration,
+                  validator: (value) {
+                    final parsed = int.tryParse(value ?? '');
+                    return parsed == null || parsed < 1 || parsed > 12
+                        ? 'Thời lượng từ 1 đến 12 giờ.'
+                        : null;
+                  },
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Số giờ thuê',
+                    prefixIcon: Icon(Icons.schedule_outlined),
+                  ),
+                )
+              else
                 TextFormField(
                   controller: passengers,
                   validator: (value) {
@@ -250,23 +296,24 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                 ),
               ),
               const SizedBox(height: 10),
-              if (!delivery) ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                leading: const Icon(Icons.schedule_outlined),
-                title: Text(
-                  scheduledAt == null
-                      ? 'Đặt ngay'
-                      : 'Đặt lúc ${scheduledAt!.day}/${scheduledAt!.month} '
-                            '${scheduledAt!.hour.toString().padLeft(2, '0')}:'
-                            '${scheduledAt!.minute.toString().padLeft(2, '0')}',
+              if (!delivery)
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                  leading: const Icon(Icons.schedule_outlined),
+                  title: Text(
+                    scheduledAt == null
+                        ? 'Đặt ngay'
+                        : 'Đặt lúc ${scheduledAt!.day}/${scheduledAt!.month} '
+                              '${scheduledAt!.hour.toString().padLeft(2, '0')}:'
+                              '${scheduledAt!.minute.toString().padLeft(2, '0')}',
+                  ),
+                  subtitle: const Text('Bạn có thể đặt trước tối đa 30 ngày.'),
+                  trailing: IconButton(
+                    tooltip: 'Chọn thời gian',
+                    onPressed: _pickSchedule,
+                    icon: const Icon(Icons.edit_calendar_outlined),
+                  ),
                 ),
-                subtitle: const Text('Bạn có thể đặt trước tối đa 30 ngày.'),
-                trailing: IconButton(
-                  tooltip: 'Chọn thời gian',
-                  onPressed: _pickSchedule,
-                  icon: const Icon(Icons.edit_calendar_outlined),
-                ),
-              ),
               if (widget.controller.error case final error?) ...[
                 const SizedBox(height: 12),
                 ErrorBanner(message: error),
@@ -305,16 +352,21 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
 
   Future<void> _quote() async {
     final delivery = widget.service == ServiceKind.delivery;
+    final hourly = widget.service == ServiceKind.hourly;
     if (!formKey.currentState!.validate()) return;
     final goong = widget.controller.goong;
     if (goong?.configured != true ||
         pickupAddress.text.trim().isEmpty ||
-        dropoffAddress.text.trim().isEmpty ||
         !_pickupConfirmed ||
-        !_dropoffConfirmed) {
+        (!hourly &&
+            (dropoffAddress.text.trim().isEmpty || !_dropoffConfirmed))) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Hãy cấu hình Goong và chọn đủ điểm đón, điểm đến.'),
+        SnackBar(
+          content: Text(
+            hourly
+                ? 'Hãy cấu hình Goong và chọn điểm đón.'
+                : 'Hãy cấu hình Goong và chọn đủ điểm đón, điểm đến.',
+          ),
         ),
       );
       return;
@@ -330,27 +382,32 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
           latitude: _pickup.latitude,
           longitude: _pickup.longitude,
         ),
-        dropoff: LocationDraft(
-          address: dropoffAddress.text.trim(),
-          latitude: _dropoff.latitude,
-          longitude: _dropoff.longitude,
-        ),
+        dropoff: hourly
+            ? null
+            : LocationDraft(
+                address: dropoffAddress.text.trim(),
+                latitude: _dropoff.latitude,
+                longitude: _dropoff.longitude,
+              ),
         goodsType: goodsType.text.trim(),
         weightKg: double.tryParse(weight.text.replaceAll(',', '.')) ?? 0,
         passengerCount: int.tryParse(passengers.text) ?? 1,
         voucherCode: voucher.text.trim().isEmpty ? null : voucher.text.trim(),
         scheduledAt: delivery ? null : scheduledAt,
-        vehicleTypeId: delivery
+        vehicleTypeId: hourly || delivery
             ? widget.controller.vehicleIdForKey('MOTORBIKE')
             : null,
-        vehicleTypeIds: delivery
+        vehicleTypeIds: delivery || hourly
             ? null
             : [
                 widget.controller.vehicleIdForKey('MOTORBIKE'),
                 widget.controller.vehicleIdForKey('CAR_4_SEAT'),
               ].whereType<String>().toList(growable: false),
         passengerName: widget.isProxyBooking ? passengerName.text.trim() : null,
-        passengerPhone: widget.isProxyBooking ? passengerPhone.text.trim() : null,
+        passengerPhone: widget.isProxyBooking
+            ? passengerPhone.text.trim()
+            : null,
+        durationHours: hourly ? int.tryParse(duration.text) : null,
       ),
     );
     if (widget.controller.error != null || !mounted) return;

@@ -6,6 +6,7 @@ use App\Enums\BookingType;
 use App\Enums\ServiceType;
 use App\Enums\UserStatus;
 use App\Models\User;
+use App\Models\SystemSetting;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -24,6 +25,7 @@ class StoreQuoteRequest extends FormRequest
     {
         $isDelivery = $this->input('service_type') === ServiceType::Delivery->value;
         $isDrive = $this->input('service_type') === ServiceType::Drive->value;
+        $isHourly = $this->input('service_type') === ServiceType::Hourly->value;
         $isScheduled = $this->input('booking_type') === BookingType::Scheduled->value;
 
         return [
@@ -49,24 +51,28 @@ class StoreQuoteRequest extends FormRequest
             'pickup.latitude' => ['required', 'numeric', 'between:-90,90'],
             'pickup.longitude' => ['required', 'numeric', 'between:-180,180'],
             'pickup.note' => ['nullable', 'string', 'max:500'],
-            'dropoff' => ['required', 'array:address,latitude,longitude,note'],
-            'dropoff.address' => ['required', 'string', 'max:500'],
-            'dropoff.latitude' => ['required', 'numeric', 'between:-90,90'],
-            'dropoff.longitude' => ['required', 'numeric', 'between:-180,180'],
+            'dropoff' => [
+                Rule::requiredIf(! $isHourly),
+                Rule::prohibitedIf($isHourly),
+                'array:address,latitude,longitude,note',
+            ],
+            'dropoff.address' => [Rule::requiredIf(! $isHourly), 'string', 'max:500'],
+            'dropoff.latitude' => [Rule::requiredIf(! $isHourly), 'numeric', 'between:-90,90'],
+            'dropoff.longitude' => [Rule::requiredIf(! $isHourly), 'numeric', 'between:-180,180'],
             'dropoff.note' => ['nullable', 'string', 'max:500'],
             'service_payload' => [
                 'required',
-                'array:passenger_count,goods_type,goods_description,weight_kg,length_cm,width_cm,height_cm,declared_value,is_cod,cod_amount',
+                'array:passenger_count,goods_type,goods_description,weight_kg,length_cm,width_cm,height_cm,declared_value,is_cod,cod_amount,duration_hours',
             ],
             'service_payload.passenger_count' => [
                 Rule::requiredIf($isDrive),
-                Rule::prohibitedIf($isDelivery),
+                Rule::prohibitedIf(! $isDrive),
                 'integer',
                 'min:1',
             ],
             'service_payload.goods_type' => [
                 Rule::requiredIf($isDelivery),
-                Rule::prohibitedIf($isDrive),
+                Rule::prohibitedIf(! $isDelivery),
                 'string',
                 'max:50',
             ],
@@ -84,7 +90,24 @@ class StoreQuoteRequest extends FormRequest
                 'min:1',
                 'max:8000000',
             ],
+            'service_payload.duration_hours' => [
+                Rule::requiredIf($isHourly),
+                Rule::prohibitedIf(! $isHourly),
+                'integer',
+                'between:1,12',
+            ],
             'voucher_code' => ['nullable', 'string', 'max:50'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            if ($this->input('service_type') !== ServiceType::Hourly->value) return;
+            $enabled = SystemSetting::query()->find('features.hourly_enabled')?->value === true;
+            if (! $enabled) {
+                $validator->errors()->add('service_type', 'Thuê giờ hiện chưa được mở.');
+            }
+        });
     }
 }

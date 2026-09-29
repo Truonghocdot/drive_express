@@ -26,6 +26,10 @@ class VoucherPreviewService
 
         $voucher = Voucher::query()
             ->where('code', mb_strtoupper(trim($code)))
+            ->where(function ($query) use ($user): void {
+                $query->whereNull('owner_user_id')
+                    ->orWhere('owner_user_id', $user->id);
+            })
             ->where('is_active', true)
             ->where('starts_at', '<=', now())
             ->where('ends_at', '>', now())

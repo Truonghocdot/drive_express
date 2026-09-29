@@ -80,3 +80,11 @@ Loại phương tiện không nhập tự do. Tài xế chọn từ danh mục d
 - Hai tài xế không thể dùng cùng giấy tờ/biển số khi chính sách không cho phép.
 - Tài xế đang có công việc active không được assign thêm công việc trong MVP.
 - Mất heartbeat đưa tài xế rảnh về offline sau ngưỡng cấu hình.
+
+## Mapping với driver mobile hiện tại
+
+- KYC chưa duyệt đi qua `DriverKycPage`; chỉ hồ sơ `APPROVED` mới vào `MainDriverNavigationPage`.
+- Shell chính có 4 tab: Hoạt động, Lịch sử, Thu nhập, Hồ sơ.
+- Toggle online được phản ánh ở Home và Profile, nhưng dùng chung `DriverAppController.setOnline`.
+- Khi online, controller gửi location mỗi 5 giây; Redis presence TTL là 15 giây.
+- Khi ví âm, worker từ chối availability/offer mới; UI hiển thị error và giữ trạng thái ngoại tuyến.

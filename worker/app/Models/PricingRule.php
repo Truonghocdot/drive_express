@@ -21,6 +21,9 @@ use Illuminate\Support\Str;
  * @property float $base_fare
  * @property float $price_per_extra_km
  * @property float $driver_rate
+ * @property float|null $hourly_rate
+ * @property int|null $minimum_duration_hours
+ * @property int|null $maximum_duration_hours
  * @property string $currency
  * @property CarbonImmutable $effective_from
  * @property CarbonImmutable|null $effective_to
@@ -34,6 +37,9 @@ use Illuminate\Support\Str;
     'base_fare',
     'price_per_extra_km',
     'driver_rate',
+    'hourly_rate',
+    'minimum_duration_hours',
+    'maximum_duration_hours',
     'currency',
     'effective_from',
     'effective_to',
@@ -84,6 +90,9 @@ class PricingRule extends Model
             'base_fare' => 'float',
             'price_per_extra_km' => 'float',
             'driver_rate' => 'float',
+            'hourly_rate' => 'float',
+            'minimum_duration_hours' => 'integer',
+            'maximum_duration_hours' => 'integer',
             'effective_from' => 'immutable_datetime',
             'effective_to' => 'immutable_datetime',
             'is_active' => 'boolean',

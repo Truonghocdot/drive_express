@@ -46,7 +46,7 @@ Cho phép người dùng tạo tài khoản, xác minh số điện thoại bằ
 
 ## Luồng D - Đăng xuất
 
-1. Đăng xuất thiết bị hiện tại: thu hồi token đang dùng và unregister push token tương ứng.
+1. Đăng xuất thiết bị hiện tại: thu hồi token đang dùng và revoke push token tương ứng trong `user_devices`.
 2. Đăng xuất tất cả thiết bị: thu hồi toàn bộ token của user và ngắt các socket room của user.
 
 ## Nhánh lỗi và quy tắc

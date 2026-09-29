@@ -4,6 +4,7 @@ namespace App\Services\Quote;
 
 use App\Contracts\Maps\MapProvider;
 use App\Data\Maps\Coordinates;
+use App\Data\Maps\RouteResult;
 use App\Enums\BookingType;
 use App\Enums\QuoteStatus;
 use App\Enums\ServiceType;
@@ -37,25 +38,52 @@ class QuoteService
             ->firstOrFail();
         $this->validateServiceVehicle($serviceType, $bookingType, $vehicleType);
         $pickup = $this->coordinates($data['pickup']);
-        $dropoff = $this->coordinates($data['dropoff']);
+        $dropoff = isset($data['dropoff']) ? $this->coordinates($data['dropoff']) : null;
         /** @var array<string, mixed> $servicePayload */
         $servicePayload = $data['service_payload'];
 
         $this->validateVehicleCapacity($serviceType, $vehicleType, $servicePayload);
-        $route = $this->mapProvider->route($pickup, $dropoff, $vehicleType->unique_key);
+        $durationHours = $serviceType === ServiceType::Hourly
+            ? (int) ($servicePayload['duration_hours'] ?? 0)
+            : null;
+        $route = $serviceType === ServiceType::Hourly
+            ? new RouteResult('hourly', 0, ($durationHours ?? 0) * 3_600, null)
+            : $this->mapProvider->route($pickup, $dropoff, $vehicleType->unique_key);
         $pricingRule = $this->pricingService->currentRule($serviceType, $vehicleType);
-        $subtotal = $this->pricingService->calculate($pricingRule, $route->distanceMeters);
+        if ($serviceType === ServiceType::Hourly) {
+            $minimum = $pricingRule->minimum_duration_hours ?? 1;
+            $maximum = $pricingRule->maximum_duration_hours ?? 12;
+            if (($durationHours ?? 0) < $minimum || ($durationHours ?? 0) > $maximum) {
+                throw ValidationException::withMessages([
+                    'service_payload.duration_hours' => ["Thời lượng phải từ {$minimum} đến {$maximum} giờ."],
+                ]);
+            }
+            if ($pricingRule->hourly_rate === null) {
+                throw ValidationException::withMessages([
+                    'vehicle_type_id' => ['Chưa cấu hình giá thuê theo giờ cho loại xe này.'],
+                ]);
+            }
+        }
+        $subtotal = $serviceType === ServiceType::Hourly
+            ? $this->pricingService->calculateHourly($pricingRule, $durationHours ?? 0)
+            : $this->pricingService->calculate($pricingRule, $route->distanceMeters);
         $voucherPreview = $this->voucherPreviewService->preview(
             isset($data['voucher_code']) ? (string) $data['voucher_code'] : null,
             $user,
             $serviceType,
             $subtotal->grossFare,
         );
-        $pricing = $this->pricingService->calculate(
-            $pricingRule,
-            $route->distanceMeters,
-            $voucherPreview['discount'],
-        );
+        $pricing = $serviceType === ServiceType::Hourly
+            ? $this->pricingService->calculateHourly(
+                $pricingRule,
+                $durationHours ?? 0,
+                $voucherPreview['discount'],
+            )
+            : $this->pricingService->calculate(
+                $pricingRule,
+                $route->distanceMeters,
+                $voucherPreview['discount'],
+            );
 
         if ($voucherPreview['voucher'] !== null) {
             $servicePayload['voucher'] = [
@@ -76,7 +104,7 @@ class QuoteService
                 ? CarbonImmutable::parse((string) $data['scheduled_at'])
                 : null,
             'pickup_snapshot' => $this->locationSnapshot($data['pickup']),
-            'dropoff_snapshot' => $this->locationSnapshot($data['dropoff']),
+            'dropoff_snapshot' => isset($data['dropoff']) ? $this->locationSnapshot($data['dropoff']) : null,
             'service_payload' => $servicePayload,
             'route_snapshot' => $routeSnapshot,
             'distance_meters' => $route->distanceMeters,
@@ -141,7 +169,7 @@ class QuoteService
             ]);
         }
 
-        if ($serviceType === ServiceType::Drive
+        if (in_array($serviceType, [ServiceType::Drive, ServiceType::Hourly], true)
             && ! in_array($vehicleType->unique_key, ['MOTORBIKE', 'CAR_4_SEAT'], true)) {
             throw ValidationException::withMessages([
                 'vehicle_type_id' => ['Chuyến xe chỉ hỗ trợ xe máy hoặc ô tô 4 chỗ.'],
@@ -152,8 +180,9 @@ class QuoteService
     /**
      * @return array<string, mixed>
      */
-    private function locationSnapshot(mixed $location): array
+    private function locationSnapshot(mixed $location): ?array
     {
+        if ($location === null) return null;
         /** @var array<string, mixed> $location */
         return array_filter([
             'address' => (string) $location['address'],
