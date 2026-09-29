@@ -46,6 +46,13 @@ String formatClientValue(String value) {
     'FAILED' => 'Thất bại',
     'SERVICE_DRIVER_ASSIGNED' => 'Tài xế đã nhận đơn',
     'DRIVER_OFFER_RECEIVED' => 'Có cuốc mới gần bạn',
+    'SUPPORT_TICKET_CREATED' => 'Đã tạo yêu cầu hỗ trợ',
+    'SUPPORT_TICKET_MESSAGE' => 'Tin nhắn hỗ trợ mới',
+    'SUPPORT_TICKET_ASSIGNED' => 'Yêu cầu hỗ trợ đã được tiếp nhận',
+    'SUPPORT_TICKET_RESOLVED' => 'Yêu cầu hỗ trợ đã được xử lý',
+    'CHAT_MESSAGE_RECEIVED' => 'Tin nhắn mới từ tài xế',
+    'INCIDENT_REPORTED' => 'Đã gửi báo cáo sự cố',
+    'RATING_RECEIVED' => 'Đã nhận đánh giá mới',
     _ => value,
   };
 }

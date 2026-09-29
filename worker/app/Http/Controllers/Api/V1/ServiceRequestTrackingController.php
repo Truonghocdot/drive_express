@@ -21,7 +21,11 @@ class ServiceRequestTrackingController extends Controller
         $assignment = $serviceRequest->assignments()
             ->where('status', AssignmentStatus::Active->value)
             ->with(['driverProfile.user', 'driverProfile.lastLocation', 'vehicle.vehicleType'])
-            ->first();
+            ->first()
+            ?? $serviceRequest->assignments()
+                ->latest('id')
+                ->with(['driverProfile.user', 'driverProfile.lastLocation', 'vehicle.vehicleType'])
+                ->first();
         $isCustomer = $serviceRequest->created_by === $user->id;
         $isAssignedDriver = $assignment?->driverProfile?->user_id === $user->id;
         abort_unless($isCustomer || $isAssignedDriver || $user->hasRole(RoleKey::Admin), 404);
@@ -47,6 +51,7 @@ class ServiceRequestTrackingController extends Controller
                 'driver' => $assignment === null ? null : [
                     'id' => $assignment->driverProfile->public_id,
                     'name' => $assignment->driverProfile->user->name,
+                    'phone' => $assignment->driverProfile->user->phone,
                     'vehicle' => $assignment->vehicle === null ? null : [
                         'id' => $assignment->vehicle->public_id,
                         'plate_number' => $assignment->vehicle->plate_number,

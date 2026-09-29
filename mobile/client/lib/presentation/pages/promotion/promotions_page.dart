@@ -150,20 +150,25 @@ class PromotionsPage extends StatelessWidget {
         ),
         title: Text(reward.name),
         subtitle: Text('${reward.pointsCost} điểm'),
-        trailing: FilledButton(
-          onPressed: enabled
-              ? () async {
-                  final result = await controller.redeemLoyaltyReward(
-                    reward.id,
-                  );
-                  if (context.mounted && result != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Đã đổi ${result.voucher.code}.')),
+        trailing: SizedBox(
+          width: 64,
+          child: FilledButton(
+            onPressed: enabled
+                ? () async {
+                    final result = await controller.redeemLoyaltyReward(
+                      reward.id,
                     );
+                    if (context.mounted && result != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Đã đổi ${result.voucher.code}.'),
+                        ),
+                      );
+                    }
                   }
-                }
-              : null,
-          child: const Text('Đổi'),
+                : null,
+            child: const Text('Đổi'),
+          ),
         ),
       ),
     );

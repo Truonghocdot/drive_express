@@ -32,6 +32,7 @@ class OfferController extends Controller
                 })
                 ->with([
                     'serviceRequest.stops',
+                    'serviceRequest.creator',
                     'serviceRequest.vehicleType',
                     'serviceRequest.payment',
                     'serviceRequest.rideBooking',

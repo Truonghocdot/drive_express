@@ -28,6 +28,7 @@ class ServiceRequestSnapshotController extends Controller
             'payment.settlement',
             'assignments.driverProfile.user',
             'assignments.vehicle',
+            'ratings',
             'evidences',
         ]));
     }

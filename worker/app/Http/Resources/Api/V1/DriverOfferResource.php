@@ -25,11 +25,13 @@ class DriverOfferResource extends JsonResource
             'service_request' => new ServiceRequestResource($this->whenLoaded('serviceRequest')),
             'passenger' => $this->when(
                 $this->relationLoaded('serviceRequest')
-                    && $this->serviceRequest->relationLoaded('rideBooking')
-                    && $this->serviceRequest->rideBooking !== null,
+                    && ($this->serviceRequest->relationLoaded('rideBooking')
+                        || $this->serviceRequest->relationLoaded('creator')),
                 fn () => [
-                    'name' => $this->serviceRequest->rideBooking->passenger_name,
-                    'phone' => $this->serviceRequest->rideBooking->passenger_phone,
+                    'name' => $this->serviceRequest->rideBooking?->passenger_name
+                        ?? $this->serviceRequest->creator?->name,
+                    'phone' => $this->serviceRequest->rideBooking?->passenger_phone
+                        ?? $this->serviceRequest->creator?->phone,
                 ],
             ),
             'assignment' => $this->whenLoaded('assignment', fn () => [

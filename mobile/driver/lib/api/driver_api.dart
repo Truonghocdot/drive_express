@@ -217,6 +217,8 @@ class DriverOfferSummary {
     required this.dropoffLongitude,
     this.passengerName,
     this.passengerPhone,
+    this.pickupAddress,
+    this.dropoffAddress,
   });
 
   final String id;
@@ -235,6 +237,8 @@ class DriverOfferSummary {
   final double dropoffLongitude;
   final String? passengerName;
   final String? passengerPhone;
+  final String? pickupAddress;
+  final String? dropoffAddress;
 
   factory DriverOfferSummary.fromJson(Map<String, dynamic> json) {
     final serviceRequest = json['service_request'] as Map<String, dynamic>;
@@ -275,10 +279,14 @@ class DriverOfferSummary {
       ),
       passengerName:
           passenger?['name']?.toString() ??
-          rideBooking?['passenger_name']?.toString(),
+          rideBooking?['passenger_name']?.toString() ??
+          pickup['contact_name']?.toString(),
       passengerPhone:
           passenger?['phone']?.toString() ??
-          rideBooking?['passenger_phone']?.toString(),
+          rideBooking?['passenger_phone']?.toString() ??
+          pickup['contact_phone']?.toString(),
+      pickupAddress: pickup['address']?.toString(),
+      dropoffAddress: dropoff?['address']?.toString(),
     );
   }
 
@@ -300,6 +308,8 @@ class DriverOfferSummary {
       dropoffLongitude: dropoffLongitude,
       passengerName: passengerName,
       passengerPhone: passengerPhone,
+      pickupAddress: pickupAddress,
+      dropoffAddress: dropoffAddress,
     );
   }
 }

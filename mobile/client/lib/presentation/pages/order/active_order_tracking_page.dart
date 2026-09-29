@@ -22,6 +22,7 @@ class _ActiveOrderTrackingPageState extends State<ActiveOrderTrackingPage> {
   GoongRoute? route;
   String? routeKey;
   bool routeLoading = false;
+  bool ratingSubmitted = false;
 
   ClientAppController get controller => widget.controller;
 
@@ -177,17 +178,11 @@ class _ActiveOrderTrackingPageState extends State<ActiveOrderTrackingPage> {
                           label: const Text('SOS'),
                         ),
                         if (controller.isTerminal(request.status) &&
-                            request.status != 'CANCELLED')
+                            request.status != 'CANCELLED' &&
+                            request.customerRatingSubmitted != true &&
+                            !ratingSubmitted)
                           OutlinedButton.icon(
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => RatingReviewPage(
-                                  controller: controller,
-                                  request: request,
-                                ),
-                              ),
-                            ),
+                            onPressed: () => _rate(request),
                             icon: const Icon(Icons.star_outline),
                             label: const Text('Đánh giá'),
                           ),
@@ -211,6 +206,17 @@ class _ActiveOrderTrackingPageState extends State<ActiveOrderTrackingPage> {
         );
       },
     );
+  }
+
+  Future<void> _rate(ServiceRequestSummary request) async {
+    final submitted = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            RatingReviewPage(controller: controller, request: request),
+      ),
+    );
+    if (submitted == true && mounted) setState(() => ratingSubmitted = true);
   }
 
   bool _chatAvailable(String status) => const {

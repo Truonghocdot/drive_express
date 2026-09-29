@@ -96,7 +96,7 @@ class _RatingReviewPageState extends State<RatingReviewPage> {
         score: score,
         comment: comment.text,
       );
-      if (mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context, true);
     } catch (exception) {
       if (mounted) setState(() => error = exception.toString());
     } finally {

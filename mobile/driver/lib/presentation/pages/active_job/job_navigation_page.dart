@@ -136,6 +136,10 @@ class _JobNavigationPageState extends State<JobNavigationPage> {
                       Text(
                         'Thu nhập dự kiến ${offer.estimatedEarning.toStringAsFixed(0)} VND',
                       ),
+                      const SizedBox(height: 12),
+                      _ParticipantInfo(offer: offer),
+                      const SizedBox(height: 10),
+                      _StopInfo(offer: offer),
                     ],
                   ),
                 ),
@@ -165,6 +169,22 @@ class _JobNavigationPageState extends State<JobNavigationPage> {
                     label: Text(action.label),
                   ),
                 ),
+              if (_chatAvailable(offer.serviceStatus)) ...[
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatWithCustomerPage(
+                        controller: controller,
+                        offer: offer,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.forum_outlined),
+                  label: const Text('Nhắn tin với khách'),
+                ),
+              ],
               const SizedBox(height: 10),
               OutlinedButton.icon(
                 onPressed: () => _sos(context, offer),
@@ -228,6 +248,13 @@ class _JobNavigationPageState extends State<JobNavigationPage> {
 
   String _destinationLabel(String status) =>
       _usesDropoff(status) ? 'điểm đến' : 'điểm đón';
+
+  bool _chatAvailable(String status) => !const {
+    'COMPLETED',
+    'CANCELLED',
+    'DELIVERY_FAILED',
+    'RETURNED',
+  }.contains(status);
 
   JobAction? _nextAction(String status) => switch (status) {
     'DRIVER_ARRIVING_PICKUP' => const JobAction(
@@ -386,6 +413,72 @@ class _NavigationSummary extends StatelessWidget {
             ),
           ),
           Text('$minutes phút'),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParticipantInfo extends StatelessWidget {
+  const _ParticipantInfo({required this.offer});
+
+  final DriverOfferSummary offer;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = offer.passengerName ?? 'Chưa có tên người đi';
+    final phone = offer.passengerPhone ?? 'Chưa có số điện thoại';
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const CircleAvatar(radius: 20, child: Icon(Icons.person_outline)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name, style: Theme.of(context).textTheme.titleMedium),
+              Text(phone),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StopInfo extends StatelessWidget {
+  const _StopInfo({required this.offer});
+
+  final DriverOfferSummary offer;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (offer.pickupAddress case final pickup?)
+          _stop(context, 'Điểm bắt đầu', pickup, Icons.trip_origin),
+        if (offer.dropoffAddress case final dropoff?)
+          _stop(context, 'Điểm kết thúc', dropoff, Icons.location_on_outlined),
+      ],
+    );
+  }
+
+  Widget _stop(
+    BuildContext context,
+    String label,
+    String address,
+    IconData icon,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(child: Text('$label: $address')),
         ],
       ),
     );

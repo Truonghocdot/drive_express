@@ -63,6 +63,13 @@ class ServiceRequestResource extends JsonResource
 
                 return $assignment === null ? null : new AssignmentResource($assignment);
             }),
+            'customer_rating_submitted' => $this->when(
+                $this->relationLoaded('ratings'),
+                fn (): bool => $this->ratings->contains(
+                    fn ($rating): bool => $rating->reviewer_user_id === $request->user()?->id
+                        && $rating->direction === 'CUSTOMER_TO_DRIVER',
+                ),
+            ),
             'evidences' => ServiceEvidenceResource::collection(
                 $this->whenLoaded('evidences'),
             ),

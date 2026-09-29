@@ -210,7 +210,7 @@ class _DriverGoongMapState extends State<DriverGoongMap> {
         left: 42,
         top: 42,
         right: 42,
-        bottom: 42,
+        bottom: widget.fullScreen ? 240 : 42,
       ),
     );
   }

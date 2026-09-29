@@ -192,6 +192,7 @@ class ServiceRequestSummary {
     this.dropoffLatitude,
     this.dropoffLongitude,
     this.createdAt,
+    this.customerRatingSubmitted = false,
   });
 
   final String id;
@@ -208,6 +209,7 @@ class ServiceRequestSummary {
   final double? dropoffLatitude;
   final double? dropoffLongitude;
   final DateTime? createdAt;
+  final bool? customerRatingSubmitted;
 
   factory ServiceRequestSummary.fromJson(Map<String, dynamic> json) {
     final payment = json['payment'] as Map<String, dynamic>;
@@ -241,6 +243,7 @@ class ServiceRequestSummary {
       createdAt: json['created_at'] == null
           ? null
           : DateTime.parse(json['created_at'].toString()),
+      customerRatingSubmitted: json['customer_rating_submitted'] == true,
     );
   }
 }
@@ -282,6 +285,7 @@ class TrackingSummary {
     required this.stops,
     required this.locationStale,
     this.driverName,
+    this.driverPhone,
     this.vehiclePlate,
     this.vehicleType,
     this.liveLocation,
@@ -293,6 +297,7 @@ class TrackingSummary {
   final List<Map<String, dynamic>> stops;
   final bool locationStale;
   final String? driverName;
+  final String? driverPhone;
   final String? vehiclePlate;
   final String? vehicleType;
   final LiveLocationSummary? liveLocation;
@@ -311,6 +316,7 @@ class TrackingSummary {
           .toList(growable: false),
       locationStale: json['location_stale'] == true,
       driverName: driver?['name']?.toString(),
+      driverPhone: driver?['phone']?.toString(),
       vehiclePlate: vehicle?['plate_number']?.toString(),
       vehicleType: vehicle?['type']?.toString(),
       liveLocation: location == null
