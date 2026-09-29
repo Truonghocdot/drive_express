@@ -5,6 +5,7 @@ namespace App\Services\Notification;
 use App\Models\OutboxEvent;
 use App\Models\User;
 use App\Models\UserNotification;
+use Illuminate\Support\Facades\Log;
 
 class NotificationService
 {
@@ -37,6 +38,12 @@ class NotificationService
             'status' => 'PENDING',
             'attempt_count' => 0,
             'available_at' => now(),
+        ]);
+
+        Log::info('Notification queued for push dispatch.', [
+            'notification_id' => $notification->id,
+            'user_id' => $user->public_id,
+            'type' => $type,
         ]);
 
         return $notification;

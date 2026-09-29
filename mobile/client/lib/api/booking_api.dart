@@ -640,6 +640,7 @@ abstract interface class CustomerAccountGateway {
     required String password,
   });
   Future<CustomerProfileSummary> validateSession(BookingSession session);
+  Future<void> syncPushToken(BookingSession session);
   Future<void> logout(BookingSession session);
 }
 
@@ -931,6 +932,29 @@ class BookingApi
         ),
       ),
     );
+  }
+
+  @override
+  Future<void> syncPushToken(BookingSession session) async {
+    final pushToken = await pushTokenProvider?.token();
+    if (pushToken == null || pushToken.isEmpty) return;
+
+    final response = await _transport.send(
+      method: 'POST',
+      uri: _uri(session, '/devices/push-token'),
+      token: session.token,
+      body: {
+        'device_id': deviceId,
+        'app_type': 'CUSTOMER_APP',
+        'platform': kIsWeb
+            ? 'WEB'
+            : defaultTargetPlatform == TargetPlatform.iOS
+            ? 'IOS'
+            : 'ANDROID',
+        'push_token': pushToken,
+      },
+    );
+    _data(response);
   }
 
   @override

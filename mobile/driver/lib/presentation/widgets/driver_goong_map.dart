@@ -15,6 +15,7 @@ class DriverGoongMap extends StatefulWidget {
     this.height = 260,
     this.fullScreen = false,
     this.styleUrl,
+    this.showLegend = true,
   });
 
   final String mapKey;
@@ -25,6 +26,7 @@ class DriverGoongMap extends StatefulWidget {
   final double height;
   final bool fullScreen;
   final String? styleUrl;
+  final bool showLegend;
 
   @override
   State<DriverGoongMap> createState() => _DriverGoongMapState();
@@ -91,17 +93,18 @@ class _DriverGoongMapState extends State<DriverGoongMap> {
               _drawMap();
             },
           ),
-          Positioned(
-            top: 12,
-            left: 12,
-            child: IgnorePointer(
-              child: _DriverMapLegend(
-                hasCurrent: widget.current != null,
-                hasPickup: widget.pickup != null,
-                hasDropoff: widget.dropoff != null,
+          if (widget.showLegend)
+            Positioned(
+              top: 12,
+              left: 12,
+              child: IgnorePointer(
+                child: _DriverMapLegend(
+                  hasCurrent: widget.current != null,
+                  hasPickup: widget.pickup != null,
+                  hasDropoff: widget.dropoff != null,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\V1\Internal\RevokePushTokenController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\PromotionController;
+use App\Http\Controllers\Api\V1\PushTokenController;
 use App\Http\Controllers\Api\V1\LoyaltyController;
 use App\Http\Controllers\Api\V1\QuoteController;
 use App\Http\Controllers\Api\V1\RatingController;
@@ -82,6 +83,7 @@ Route::prefix('v1')->group(function (): void {
         ->middleware('auth:sanctum');
 
     Route::middleware('auth:sanctum')->group(function (): void {
+        Route::post('devices/push-token', PushTokenController::class);
         Route::get('catalog/vehicle-types', VehicleTypeController::class);
         Route::get('promotions/vouchers', [PromotionController::class, 'vouchers']);
         Route::get('loyalty/account', [LoyaltyController::class, 'account']);

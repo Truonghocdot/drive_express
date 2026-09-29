@@ -140,6 +140,7 @@ abstract interface class DriverOperationsGateway {
     required String password,
   });
   Future<void> validateSession(DriverSession session);
+  Future<void> syncPushToken(DriverSession session);
   Future<void> logout(DriverSession session);
   Future<DriverProfileSummary?> loadApplication(DriverSession session);
   Future<DriverProfileSummary> saveApplication(DriverSession session);
@@ -936,6 +937,24 @@ class DriverApi
       token: session.token,
     );
     _assertSuccess(response);
+  }
+
+  @override
+  Future<void> syncPushToken(DriverSession session) async {
+    final pushToken = await pushTokenProvider?.token();
+    if (pushToken == null || pushToken.isEmpty) return;
+
+    await _resource(
+      session,
+      'POST',
+      '/devices/push-token',
+      body: {
+        'device_id': deviceId,
+        'app_type': 'DRIVER_APP',
+        'platform': _platform,
+        'push_token': pushToken,
+      },
+    );
   }
 
   @override

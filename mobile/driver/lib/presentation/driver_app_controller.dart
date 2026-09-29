@@ -235,6 +235,16 @@ class DriverAppController extends ChangeNotifier {
 
   Future<void> refreshApplication() => _guard(_loadApplication);
 
+  Future<void> syncPushToken() async {
+    if (!authenticated || onboarding) return;
+
+    try {
+      await operations?.syncPushToken(_session);
+    } catch (_) {
+      // A failed push-token refresh must not interrupt the driver workflow.
+    }
+  }
+
   Future<void> saveApplication() async {
     final ops = operations;
     if (ops == null) return;
@@ -536,6 +546,7 @@ class DriverAppController extends ChangeNotifier {
       return;
     }
 
+    await syncPushToken();
     await _loadDriverWorkspace();
   }
 

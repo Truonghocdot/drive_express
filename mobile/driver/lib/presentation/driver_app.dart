@@ -43,6 +43,7 @@ class _DriverAppState extends State<DriverApp> {
   final messengerKey = GlobalKey<ScaffoldMessengerState>();
   StreamSubscription? foregroundSubscription;
   StreamSubscription? openedSubscription;
+  StreamSubscription<String>? tokenRefreshSubscription;
   late final DriverAppController controller = DriverAppController(
     gateway: widget.gateway,
     initialSession: widget.initialSession,
@@ -61,6 +62,9 @@ class _DriverAppState extends State<DriverApp> {
     openedSubscription = widget.pushTokenProvider?.openedMessages.listen(
       _handleOpenedMessage,
     );
+    tokenRefreshSubscription = widget.pushTokenProvider?.tokenRefresh.listen(
+      (_) => unawaited(controller.syncPushToken()),
+    );
     _handleInitialMessage();
   }
 
@@ -68,6 +72,7 @@ class _DriverAppState extends State<DriverApp> {
   void dispose() {
     foregroundSubscription?.cancel();
     openedSubscription?.cancel();
+    tokenRefreshSubscription?.cancel();
     controller.dispose();
     super.dispose();
   }

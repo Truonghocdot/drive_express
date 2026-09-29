@@ -90,6 +90,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
                   longitude: active.dropoffLongitude,
                 ),
           route: active == null ? null : route?.geometry,
+          showLegend: false,
         ),
         Positioned.fill(
           child: IgnorePointer(
@@ -109,80 +110,98 @@ class _DriverHomePageState extends State<DriverHomePage> {
             ),
           ),
         ),
-        SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    DriverStatusPill(
-                      label: online ? 'TRỰC TUYẾN' : 'NGOẠI TUYẾN',
-                      online: online,
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      tooltip: 'SOS khẩn cấp',
-                      onPressed: () => _showSos(context),
-                      icon: const Icon(Icons.emergency_outlined),
-                      color: context.driverTokens.danger,
-                      style: IconButton.styleFrom(
-                        backgroundColor: context.driverTokens.surfaceLow
-                            .withValues(alpha: 0.88),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    CircleAvatar(
-                      backgroundColor: context.driverTokens.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                      child: const Icon(Icons.person_outline),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: _DriverLocationPill(
-                    position: controller.currentPosition,
-                  ),
-                ),
-                const SizedBox(height: 72),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Column(
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Column(
+                children: [
+                  Row(
                     children: [
-                      _MapAction(
-                        icon: Icons.layers_outlined,
-                        label: 'Lớp bản đồ',
-                        onPressed: () {},
+                      DriverStatusPill(
+                        label: online ? 'TRỰC TUYẾN' : 'NGOẠI TUYẾN',
+                        online: online,
                       ),
-                      const SizedBox(height: 10),
-                      _MapAction(
-                        icon: Icons.my_location,
-                        label: 'Định vị lại',
-                        onPressed: controller.refreshPosition,
+                      const Spacer(),
+                      IconButton(
+                        tooltip: 'SOS khẩn cấp',
+                        onPressed: () => _showSos(context),
+                        icon: const Icon(Icons.emergency_outlined),
+                        color: context.driverTokens.danger,
+                        style: IconButton.styleFrom(
+                          backgroundColor: context.driverTokens.surfaceLow
+                              .withValues(alpha: 0.88),
+                        ),
                       ),
-                      const SizedBox(height: 10),
-                      _MapAction(
-                        icon: Icons.radar,
-                        label: 'Radar tìm khách',
-                        onPressed: () {},
+                      const SizedBox(width: 8),
+                      CircleAvatar(
+                        backgroundColor: context.driverTokens.primary,
+                        foregroundColor: Theme.of(context)
+                            .colorScheme
+                            .onPrimary,
+                        child: const Icon(Icons.person_outline),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 16),
-                _buildBottomPanel(
-                  context,
-                  controller,
-                  online,
-                  active,
-                  pending,
-                  routeLoading: routeLoading,
-                  routeError: routeError,
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _DriverLocationPill(
+                      position: controller.currentPosition,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 188,
+          right: 16,
+          child: Column(
+            children: [
+              _MapAction(
+                icon: Icons.layers_outlined,
+                label: 'Lớp bản đồ',
+                onPressed: () {},
+              ),
+              const SizedBox(height: 10),
+              _MapAction(
+                icon: Icons.my_location,
+                label: 'Định vị lại',
+                onPressed: controller.refreshPosition,
+              ),
+              const SizedBox(height: 10),
+              _MapAction(
+                icon: Icons.radar,
+                label: 'Radar tìm khách',
+                onPressed: () {},
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          left: 16,
+          right: 16,
+          bottom: MediaQuery.paddingOf(context).bottom + 86,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * .42,
+            ),
+            child: SingleChildScrollView(
+              child: _buildBottomPanel(
+                context,
+                controller,
+                online,
+                active,
+                pending,
+                routeLoading: routeLoading,
+                routeError: routeError,
+              ),
             ),
           ),
         ),

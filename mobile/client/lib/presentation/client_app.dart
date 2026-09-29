@@ -44,6 +44,7 @@ class _BookingAppState extends State<BookingApp> {
   final messengerKey = GlobalKey<ScaffoldMessengerState>();
   StreamSubscription? foregroundSubscription;
   StreamSubscription? openedSubscription;
+  StreamSubscription<String>? tokenRefreshSubscription;
   late final ClientAppController controller = ClientAppController(
     gateway: widget.gateway,
     initialSession: widget.initialSession,
@@ -63,6 +64,9 @@ class _BookingAppState extends State<BookingApp> {
     openedSubscription = widget.pushTokenProvider?.openedMessages.listen(
       _openNotification,
     );
+    tokenRefreshSubscription = widget.pushTokenProvider?.tokenRefresh.listen(
+      (_) => unawaited(controller.syncPushToken()),
+    );
     _openInitialNotification();
   }
 
@@ -70,6 +74,7 @@ class _BookingAppState extends State<BookingApp> {
   void dispose() {
     foregroundSubscription?.cancel();
     openedSubscription?.cancel();
+    tokenRefreshSubscription?.cancel();
     controller.dispose();
     super.dispose();
   }

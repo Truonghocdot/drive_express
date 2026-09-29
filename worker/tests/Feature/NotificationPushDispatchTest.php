@@ -1,8 +1,19 @@
 <?php
 
+use App\Enums\DriverAvailabilityStatus;
+use App\Enums\DriverReviewStatus;
+use App\Enums\RoleKey;
+use App\Models\DriverProfile;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\UserDevice;
 use App\Models\UserNotification;
+use Database\Seeders\RoleSeeder;
+use Laravel\Sanctum\Sanctum;
+
+beforeEach(function () {
+    $this->seed(RoleSeeder::class);
+});
 
 test('returns active push tokens for the realtime service', function () {
     config()->set('services.realtime.internal_token', 'test-realtime-secret');
@@ -74,4 +85,42 @@ test('revokes an invalid push token', function () {
         ->assertJsonPath('data.revoked', true);
 
     expect($device->fresh()->revoked_at)->not->toBeNull();
+});
+
+test('moves an approved driver token from the onboarding app type', function () {
+    $driver = User::factory()->create();
+    $driver->roles()->attach(
+        Role::query()->where('key', RoleKey::Driver->value)->value('id'),
+        ['granted_at' => now()],
+    );
+    DriverProfile::query()->create([
+        'user_id' => $driver->id,
+        'review_status' => DriverReviewStatus::Approved,
+        'availability_status' => DriverAvailabilityStatus::Offline,
+    ]);
+    $oldDevice = UserDevice::query()->create([
+        'user_id' => $driver->id,
+        'device_id' => 'driver-device',
+        'app_type' => 'CUSTOMER_APP',
+        'platform' => 'ANDROID',
+        'push_token' => 'old-driver-token',
+    ]);
+    Sanctum::actingAs($driver, ['customer:*']);
+
+    $this->postJson('/api/v1/devices/push-token', [
+        'device_id' => 'driver-device',
+        'app_type' => 'DRIVER_APP',
+        'platform' => 'ANDROID',
+        'push_token' => 'driver-token',
+    ])->assertOk()
+        ->assertJsonPath('data.synced', true);
+
+    $this->assertDatabaseHas('user_devices', [
+        'user_id' => $driver->id,
+        'device_id' => 'driver-device',
+        'app_type' => 'DRIVER_APP',
+        'push_token' => 'driver-token',
+        'revoked_at' => null,
+    ]);
+    expect($oldDevice->fresh()->revoked_at)->not->toBeNull();
 });

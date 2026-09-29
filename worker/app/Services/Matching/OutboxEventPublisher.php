@@ -19,7 +19,7 @@ class OutboxEventPublisher
 
         foreach ($events as $event) {
             try {
-                Redis::publish(config('matching.outbox_channel', 'worker.outbox'), json_encode([
+                $subscribers = Redis::publish(config('matching.outbox_channel', 'worker.outbox'), json_encode([
                     'event_id' => $event->event_id,
                     'event_type' => $event->event_type,
                     'aggregate_type' => $event->aggregate_type,
@@ -28,6 +28,9 @@ class OutboxEventPublisher
                     'payload' => $event->payload,
                     'occurred_at' => $event->created_at?->toISOString(),
                 ], JSON_THROW_ON_ERROR));
+                if ($subscribers < 1) {
+                    throw new \RuntimeException('No realtime subscriber is listening on the outbox channel.');
+                }
                 $event->forceFill([
                     'status' => 'PUBLISHED',
                     'published_at' => now(),

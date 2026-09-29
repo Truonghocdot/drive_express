@@ -12,11 +12,13 @@ class PushTokenProvider {
   StreamSubscription<RemoteMessage>? _messageSubscription;
   StreamSubscription<RemoteMessage>? _openedSubscription;
   String? _token;
+  final _tokenRefresh = StreamController<String>.broadcast();
   final _foregroundMessages = StreamController<RemoteMessage>.broadcast();
   final _openedMessages = StreamController<RemoteMessage>.broadcast();
 
   Stream<RemoteMessage> get foregroundMessages => _foregroundMessages.stream;
   Stream<RemoteMessage> get openedMessages => _openedMessages.stream;
+  Stream<String> get tokenRefresh => _tokenRefresh.stream;
 
   Future<void> initialize() async {
     try {
@@ -40,6 +42,7 @@ class PushTokenProvider {
       _token = await _messaging!.getToken();
       _refreshSubscription = _messaging!.onTokenRefresh.listen((token) {
         _token = token;
+        _tokenRefresh.add(token);
       });
       _messageSubscription = FirebaseMessaging.onMessage.listen(
         _foregroundMessages.add,
@@ -74,6 +77,7 @@ class PushTokenProvider {
     await _refreshSubscription?.cancel();
     await _messageSubscription?.cancel();
     await _openedSubscription?.cancel();
+    await _tokenRefresh.close();
     await _foregroundMessages.close();
     await _openedMessages.close();
   }

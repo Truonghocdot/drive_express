@@ -61,6 +61,8 @@ class ClientAppController extends ChangeNotifier {
       activeRequest != null && !isTerminal(activeRequest!.status);
   QuoteSummary? get quote => selectedQuote;
 
+  Future<void> syncPushToken() => _syncPushToken();
+
   String? vehicleIdForKey(String key) => vehicles
       .where((vehicle) => vehicle.key == key)
       .map((vehicle) => vehicle.id)
@@ -112,6 +114,7 @@ class ClientAppController extends ChangeNotifier {
     }
     await _guard(() async {
       customerProfile = await accountGateway?.validateSession(_session);
+      await _syncPushToken();
       await _loadCatalog();
       final lastId = await sessionStore?.readLastRequestId();
       if (lastId != null) {
@@ -144,6 +147,7 @@ class ClientAppController extends ChangeNotifier {
       _session = _session.copyWith(token: token, vehicleTypeId: '');
       await sessionStore?.writeToken(token);
       customerProfile = await accountGateway?.validateSession(_session);
+      await _syncPushToken();
       await _loadCatalog();
       await _loadHistory();
       _startRealtime();
@@ -192,6 +196,7 @@ class ClientAppController extends ChangeNotifier {
       _session = _session.copyWith(token: token, vehicleTypeId: '');
       await sessionStore?.writeToken(token);
       customerProfile = await accountGateway?.validateSession(_session);
+      await _syncPushToken();
       await _loadCatalog();
       await _loadHistory();
       _startRealtime();
@@ -548,6 +553,14 @@ class ClientAppController extends ChangeNotifier {
     if (_session.vehicleTypeId.isEmpty ||
         !vehicles.any((vehicle) => vehicle.id == _session.vehicleTypeId)) {
       _session = _session.copyWith(vehicleTypeId: vehicles.first.id);
+    }
+  }
+
+  Future<void> _syncPushToken() async {
+    try {
+      await accountGateway?.syncPushToken(_session);
+    } catch (_) {
+      // A failed push-token refresh must not interrupt the customer workflow.
     }
   }
 
