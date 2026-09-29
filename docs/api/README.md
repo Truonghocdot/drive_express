@@ -584,7 +584,7 @@ Terminal execution tự tạo settlement idempotent. WALLET ghi có phần khác
 
 - `GET /wallet`: balance, reserved, available và 50 ledger entries gần nhất.
 - `POST /wallet/topups`: tạo VietQR request, bắt buộc `Idempotency-Key`.
-- `POST /webhooks/sepay`: không yêu cầu header xác thực; đối chiếu top-up đang chờ theo `reference` và `amount`, dedup `event_id/transaction_id`, rồi post TOP_UP cân bằng.
+- `POST /webhooks/sepay`: không yêu cầu header xác thực. Payload SePay dùng `id`, `referenceCode`, `content`, `transferType: in`, `transferAmount`; mã `TOPUP...` được rút từ `content` để đối chiếu top-up đang chờ và `id`/`referenceCode` dùng dedup.
 
 ### Bank account và withdrawal
 

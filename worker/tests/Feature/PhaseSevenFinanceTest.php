@@ -35,10 +35,14 @@ test('creates and completes a SePay top-up exactly once for duplicate webhooks',
     ], ['Idempotency-Key' => 'topup-create-key'])->assertCreated();
     $reference = $response->json('data.vietqr_reference');
     $payload = [
-        'event_id' => 'sepay-event-1',
-        'transaction_id' => 'sepay-transaction-1',
-        'reference' => $reference,
-        'amount' => 200_000,
+        'gateway' => 'VPBank',
+        'transactionDate' => '2026-09-30 04:12:00',
+        'accountNumber' => '0327182537',
+        'content' => "NHAN TU 0327182537 TRACE 048646 ND {$reference}",
+        'transferType' => 'in',
+        'transferAmount' => 200_000,
+        'referenceCode' => 'FT26273419951198',
+        'id' => 85_671_697,
     ];
 
     $this->postJson('/api/v1/webhooks/sepay', $payload)->assertOk();
@@ -98,11 +102,25 @@ test('driver can create a VietQR top-up while the wallet is negative', function 
 
 test('accepts SePay webhook requests without an authentication header', function () {
     $this->postJson('/api/v1/webhooks/sepay', [
-        'event_id' => 'invalid-event',
-        'transaction_id' => 'invalid-transaction',
-        'reference' => 'UNKNOWN',
-        'amount' => 100_000,
+        'id' => 85_671_698,
+        'referenceCode' => 'FT26273419951199',
+        'content' => 'NHAN TIEN TOPUPAAAAAAAAAAAA',
+        'transferType' => 'in',
+        'transferAmount' => 100_000,
     ])->assertUnprocessable();
+
+    $this->assertDatabaseCount('webhook_receipts', 0);
+});
+
+test('rejects outgoing SePay transactions before looking up a top-up', function () {
+    $this->postJson('/api/v1/webhooks/sepay', [
+        'id' => 85_671_699,
+        'referenceCode' => 'FT26273419951200',
+        'content' => 'CHUYEN TIEN TOPUPAAAAAAAAAAAA',
+        'transferType' => 'out',
+        'transferAmount' => 100_000,
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors('transferType');
 
     $this->assertDatabaseCount('webhook_receipts', 0);
 });
