@@ -32,6 +32,8 @@ Thông báo in-app được lưu trong `notifications`; Socket.IO phát `notific
 
 Mobile đăng ký FCM token trong `user_devices.push_token` lúc login/verify phone. `CUSTOMER_APP` dùng Firebase project customer, `DRIVER_APP` dùng Firebase project driver; `service` lấy token theo `app_type` rồi gửi bằng Firebase Admin credential tương ứng. Token lỗi được worker đánh dấu `revoked_at`.
 
+Để push chạy trên thiết bị thật, `service/.env` phải có `FIREBASE_CUSTOMER_PROJECT_ID`, `FIREBASE_CUSTOMER_CLIENT_EMAIL`, `FIREBASE_CUSTOMER_PRIVATE_KEY` của Firebase project customer và `REALTIME_INTERNAL_TOKEN` giống `worker/.env`. Worker scheduler phải chạy `outbox:publish`, đồng thời realtime service phải chạy để nhận Redis channel `worker.outbox`.
+
 ## Luồng A - Phát trạng thái
 
 1. Laravel commit transition và outbox record.
@@ -40,6 +42,14 @@ Mobile đăng ký FCM token trong `user_devices.push_token` lúc login/verify ph
 4. Service phát event vào room liên quan.
 5. `service` deduplicate/guard `aggregate_version`; mobile driver hiện dùng event làm signal rồi reload offers/notifications/snapshot qua HTTPS, không tự mutate state nghiệp vụ từ payload event.
 6. Nếu socket mất hoặc reconnect, driver client authenticate lại và gọi worker API lấy snapshot mới nhất.
+
+## Luồng A1 - Khách nhận thông báo tài xế đã nhận đơn
+
+1. Tài xế accept offer qua `POST /driver/offers/{id}/respond`.
+2. Worker commit assignment, chuyển request sang trạng thái đang đến điểm đón và tạo notification `SERVICE_DRIVER_ASSIGNED` cho customer trong cùng transaction.
+3. `NotificationService` ghi `NOTIFICATION_CREATED` vào outbox; scheduler publish event lên Redis.
+4. Realtime service gọi internal dispatch endpoint, lấy FCM token active của `CUSTOMER_APP` và gửi notification Firebase Admin SDK.
+5. Khi app foreground, customer app refresh notification list và hiện snackbar. Khi chạm push từ background/terminated, app tải request chuẩn qua HTTPS rồi mở tracking screen.
 
 ## Luồng B - Vị trí tài xế
 

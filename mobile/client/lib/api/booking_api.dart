@@ -162,12 +162,12 @@ class QuoteSummary {
     return QuoteSummary(
       id: json['id'] as String,
       service: _serviceKind(json['service_type']),
-      grossFare: (pricing['gross_fare'] as num).toDouble(),
-      voucherDiscount: (pricing['voucher_discount'] as num).toDouble(),
-      customerPayable: (pricing['customer_payable'] as num).toDouble(),
+      grossFare: _doubleValue(pricing['gross_fare']),
+      voucherDiscount: _doubleValue(pricing['voucher_discount']),
+      customerPayable: _doubleValue(pricing['customer_payable']),
       currency: pricing['currency'] as String,
-      distanceMeters: (route['distance_meters'] as num).toDouble(),
-      durationSeconds: (route['duration_seconds'] as num).toInt(),
+      distanceMeters: _doubleValue(route['distance_meters']),
+      durationSeconds: _intValue(route['duration_seconds']),
       expiresAt: DateTime.parse(json['expires_at'] as String),
       vehicleTypeId: vehicle?['id']?.toString(),
       vehicleKey: vehicle?['key']?.toString(),
@@ -227,7 +227,7 @@ class ServiceRequestSummary {
       paymentMethod: payment['method'] == PaymentChoice.wallet.apiValue
           ? PaymentChoice.wallet
           : PaymentChoice.cash,
-      customerPayable: (payment['customer_payable'] as num).toDouble(),
+      customerPayable: _doubleValue(payment['customer_payable']),
       driverNetEarning: settlement is Map<String, dynamic>
           ? (settlement['driver_net_earning'] as num?)?.toDouble()
           : null,
@@ -433,6 +433,10 @@ class CustomerProfileSummary {
   }
 }
 
+double _doubleValue(Object? value) => (value as num?)?.toDouble() ?? 0;
+
+int _intValue(Object? value) => (value as num?)?.toInt() ?? 0;
+
 ServiceKind _serviceKind(Object? value) => switch (value?.toString()) {
   'DELIVERY' => ServiceKind.delivery,
   'HOURLY' => ServiceKind.hourly,
@@ -469,7 +473,7 @@ class VoucherSummary {
     code: json['code'].toString(),
     name: json['name'].toString(),
     discountType: json['discount_type'].toString(),
-    discountValue: (json['discount_value'] as num).toDouble(),
+    discountValue: _doubleValue(json['discount_value']),
     maxDiscountAmount: (json['max_discount_amount'] as num?)?.toDouble(),
     serviceScope: json['service_scope']?.toString(),
     minimumOrderAmount: (json['minimum_order_amount'] as num?)?.toDouble() ?? 0,
@@ -496,9 +500,9 @@ class LoyaltyAccountSummary {
   factory LoyaltyAccountSummary.fromJson(Map<String, dynamic> json) =>
       LoyaltyAccountSummary(
         id: json['id'].toString(),
-        pointsBalance: (json['points_balance'] as num).toInt(),
-        lifetimeEarned: (json['lifetime_earned'] as num).toInt(),
-        lifetimeRedeemed: (json['lifetime_redeemed'] as num).toInt(),
+        pointsBalance: _intValue(json['points_balance']),
+        lifetimeEarned: _intValue(json['lifetime_earned']),
+        lifetimeRedeemed: _intValue(json['lifetime_redeemed']),
         tier: json['tier'].toString(),
       );
 }
@@ -526,9 +530,9 @@ class LoyaltyRewardSummary {
       LoyaltyRewardSummary(
         id: json['id'].toString(),
         name: json['name'].toString(),
-        pointsCost: (json['points_cost'] as num).toInt(),
+        pointsCost: _intValue(json['points_cost']),
         discountType: json['discount_type'].toString(),
-        discountValue: (json['discount_value'] as num).toDouble(),
+        discountValue: _doubleValue(json['discount_value']),
         serviceScope: json['service_scope']?.toString(),
         stock: (json['stock'] as num?)?.toInt(),
       );
@@ -553,8 +557,8 @@ class LoyaltyTransactionSummary {
       LoyaltyTransactionSummary(
         id: json['id'].toString(),
         type: json['type'].toString(),
-        points: (json['points'] as num).toInt(),
-        balanceAfter: (json['balance_after'] as num).toInt(),
+        points: _intValue(json['points']),
+        balanceAfter: _intValue(json['balance_after']),
         createdAt: DateTime.parse(json['created_at'].toString()),
       );
 }

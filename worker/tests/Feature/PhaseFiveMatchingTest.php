@@ -268,9 +268,19 @@ test('driver lists and accepts only their own offer through HTTPS API', function
         'action' => 'accept',
     ], ['Idempotency-Key' => 'driver-api-accept'])
         ->assertOk()
-        ->assertJsonPath('data.status', DriverOfferStatus::Accepted->value);
+        ->assertJsonPath('data.status', DriverOfferStatus::Accepted->value)
+        ->assertJsonCount(2, 'data.service_request.stops');
 
     $this->assertDatabaseCount('assignments', 1);
+    $this->assertDatabaseHas('notifications', [
+        'user_id' => $setup['customer']->id,
+        'type' => 'SERVICE_DRIVER_ASSIGNED',
+        'data->service_request_id' => $setup['request']->public_id,
+    ]);
+    $this->assertDatabaseHas('outbox_events', [
+        'event_type' => 'NOTIFICATION_CREATED',
+        'payload->type' => 'SERVICE_DRIVER_ASSIGNED',
+    ]);
 });
 
 test('customer can restore current state from the snapshot endpoint', function () {

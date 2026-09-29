@@ -12,6 +12,7 @@ import { WorkerNotificationClient } from './notifications/workerNotificationClie
 import { RoomGateway } from './realtime/roomGateway.js';
 
 const port = Number(process.env.SERVICE_PORT ?? 3000);
+const host = process.env.SERVICE_HOST ?? '0.0.0.0';
 const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
 const eventChannel = process.env.MATCHING_OUTBOX_CHANNEL ?? 'worker.outbox';
 const locationChannel = process.env.DRIVER_LOCATION_CHANNEL ?? 'worker.location';
@@ -64,8 +65,8 @@ const locationConsumer = new RedisEventConsumer(redisUrl, locationChannel, handl
 await redisConsumer.start();
 await locationConsumer.start();
 
-server.listen(port, () => {
-  console.log('Realtime service listening on http://127.0.0.1:' + port);
+server.listen(port, host, () => {
+  console.log('Realtime service listening on http://' + host + ':' + port);
 });
 
 const shutdown = async (): Promise<void> => {

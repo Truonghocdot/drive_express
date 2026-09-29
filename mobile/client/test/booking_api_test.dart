@@ -76,6 +76,27 @@ void main() {
     expect(transport.body?['push_token'], 'customer-fcm-token');
     expect(transport.body?['app_type'], 'CUSTOMER_APP');
   });
+
+  test('parses catalog records with missing optional numeric values', () {
+    final voucher = VoucherSummary.fromJson({
+      'id': 'voucher-id',
+      'code': 'WELCOME',
+      'name': 'Welcome',
+      'discount_type': 'FIXED',
+      'discount_value': null,
+      'ends_at': DateTime.now().toUtc().toIso8601String(),
+    });
+    final account = LoyaltyAccountSummary.fromJson({
+      'id': 'account-id',
+      'points_balance': null,
+      'lifetime_earned': null,
+      'lifetime_redeemed': null,
+      'tier': 'BRONZE',
+    });
+
+    expect(voucher.discountValue, 0);
+    expect(account.pointsBalance, 0);
+  });
 }
 
 class FixedPushTokenProvider extends PushTokenProvider {

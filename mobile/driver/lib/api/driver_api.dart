@@ -6,6 +6,10 @@ import 'api_transport.dart';
 import 'push_token_provider.dart';
 import 'request_id.dart';
 
+double _doubleValue(Object? value) => (value as num?)?.toDouble() ?? 0;
+
+int _intValue(Object? value) => (value as num?)?.toInt() ?? 0;
+
 class DriverSession {
   const DriverSession({
     required this.baseUrl,
@@ -234,11 +238,16 @@ class DriverOfferSummary {
 
   factory DriverOfferSummary.fromJson(Map<String, dynamic> json) {
     final serviceRequest = json['service_request'] as Map<String, dynamic>;
-    final stops = (serviceRequest['stops'] as List)
+    final stops = (serviceRequest['stops'] as List? ?? const [])
         .whereType<Map<String, dynamic>>()
         .toList(growable: false);
-    final pickup = stops.firstWhere((stop) => stop['type'] == 'PICKUP');
-    final dropoff = stops.firstWhere((stop) => stop['type'] == 'DROPOFF');
+    final pickup = stops.where((stop) => stop['type'] == 'PICKUP').firstOrNull;
+    if (pickup == null) {
+      throw const DriverApiException('Đề nghị không có điểm đón hợp lệ.');
+    }
+    final dropoff = stops
+        .where((stop) => stop['type'] == 'DROPOFF')
+        .firstOrNull;
     final passenger = json['passenger'] as Map<String, dynamic>?;
     final rideBooking = serviceRequest['ride_booking'] as Map<String, dynamic>?;
     return DriverOfferSummary(
@@ -250,19 +259,20 @@ class DriverOfferSummary {
       paymentMethod:
           (serviceRequest['payment'] as Map<String, dynamic>)['method']
               as String,
-      customerPayable:
-          ((serviceRequest['payment']
-                      as Map<String, dynamic>)['customer_payable']
-                  as num)
-              .toDouble(),
-      pickupDistanceMeters: (json['estimated_pickup_distance_meters'] as num)
-          .toDouble(),
-      estimatedEarning: (json['estimated_driver_earning'] as num).toDouble(),
+      customerPayable: _doubleValue(
+        (serviceRequest['payment'] as Map<String, dynamic>)['customer_payable'],
+      ),
+      pickupDistanceMeters: _doubleValue(
+        json['estimated_pickup_distance_meters'],
+      ),
+      estimatedEarning: _doubleValue(json['estimated_driver_earning']),
       expiresAt: DateTime.parse(json['expires_at'] as String),
-      pickupLatitude: (pickup['latitude'] as num).toDouble(),
-      pickupLongitude: (pickup['longitude'] as num).toDouble(),
-      dropoffLatitude: (dropoff['latitude'] as num).toDouble(),
-      dropoffLongitude: (dropoff['longitude'] as num).toDouble(),
+      pickupLatitude: _doubleValue(pickup['latitude']),
+      pickupLongitude: _doubleValue(pickup['longitude']),
+      dropoffLatitude: _doubleValue(dropoff?['latitude'] ?? pickup['latitude']),
+      dropoffLongitude: _doubleValue(
+        dropoff?['longitude'] ?? pickup['longitude'],
+      ),
       passengerName:
           passenger?['name']?.toString() ??
           rideBooking?['passenger_name']?.toString(),
@@ -309,9 +319,9 @@ class DriverWalletSummary {
 
   factory DriverWalletSummary.fromJson(Map<String, dynamic> json) {
     return DriverWalletSummary(
-      balance: (json['balance'] as num).toDouble(),
-      reserved: (json['reserved_withdrawal_amount'] as num).toDouble(),
-      available: (json['available_balance'] as num).toDouble(),
+      balance: _doubleValue(json['balance']),
+      reserved: _doubleValue(json['reserved_withdrawal_amount']),
+      available: _doubleValue(json['available_balance']),
       entries: (json['entries'] as List? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map(DriverWalletEntry.fromJson)
@@ -347,9 +357,9 @@ class DriverWalletEntry {
 
   factory DriverWalletEntry.fromJson(Map<String, dynamic> json) {
     return DriverWalletEntry(
-      id: (json['id'] as num).toInt(),
+      id: _intValue(json['id']),
       direction: json['direction'].toString(),
-      amount: (json['amount'] as num).toDouble(),
+      amount: _doubleValue(json['amount']),
       balanceAfter: (json['balance_after'] as num?)?.toDouble(),
       transactionType: json['transaction_type']?.toString(),
       transactionStatus: json['transaction_status']?.toString(),
@@ -387,7 +397,7 @@ class DriverWalletTopupSummary {
   factory DriverWalletTopupSummary.fromJson(Map<String, dynamic> json) {
     return DriverWalletTopupSummary(
       id: json['id'] as String,
-      amount: (json['amount'] as num).toDouble(),
+      amount: _doubleValue(json['amount']),
       status: json['status'] as String,
       reference: json['vietqr_reference'] as String,
       vietQrPayload: json['vietqr_payload'] as String,
@@ -434,7 +444,7 @@ class DriverJobSummary {
       id: json['id'] as String,
       serviceType: json['service_type'] as String,
       status: json['status'] as String,
-      customerPayable: (payment['customer_payable'] as num).toDouble(),
+      customerPayable: _doubleValue(payment['customer_payable']),
       paymentMethod: payment['method'] as String,
       driverNetEarning: settlement is Map<String, dynamic>
           ? (settlement['driver_net_earning'] as num?)?.toDouble()

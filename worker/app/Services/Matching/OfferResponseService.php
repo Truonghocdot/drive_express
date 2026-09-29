@@ -15,13 +15,17 @@ use App\Models\ServiceRequest;
 use App\Models\ServiceStatusHistory;
 use App\Models\User;
 use App\Services\Booking\IdempotencyService;
+use App\Services\Notification\NotificationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class OfferResponseService
 {
-    public function __construct(private readonly IdempotencyService $idempotency) {}
+    public function __construct(
+        private readonly IdempotencyService $idempotency,
+        private readonly NotificationService $notifications,
+    ) {}
 
     public function respond(
         User $user,
@@ -38,11 +42,7 @@ class OfferResponseService
             );
 
             if ($idempotency->status === 'COMPLETED') {
-                return DriverOffer::query()->findOrFail($idempotency->resource_id)->load([
-                    'serviceRequest.payment',
-                    'driverProfile.user',
-                    'assignment',
-                ]);
+                return $this->load(DriverOffer::query()->findOrFail($idempotency->resource_id));
             }
 
             $offer = DriverOffer::query()
@@ -75,7 +75,7 @@ class OfferResponseService
     private function decline(DriverOffer $offer): DriverOffer
     {
         if ($offer->status === DriverOfferStatus::Declined) {
-            return $offer->load(['serviceRequest.payment', 'driverProfile.user']);
+            return $this->load($offer);
         }
 
         if ($offer->status !== DriverOfferStatus::Pending) {
@@ -93,7 +93,7 @@ class OfferResponseService
                 'availability_status' => DriverAvailabilityStatus::Online,
             ]);
 
-            return $offer->load(['serviceRequest.payment', 'driverProfile.user']);
+            return $this->load($offer);
         }
 
         $offer->forceFill([
@@ -105,7 +105,7 @@ class OfferResponseService
             'availability_status' => DriverAvailabilityStatus::Online,
         ]);
 
-        return $offer->load(['serviceRequest.payment', 'driverProfile.user']);
+        return $this->load($offer);
     }
 
     private function accept(DriverOffer $offer): DriverOffer
@@ -113,7 +113,7 @@ class OfferResponseService
         $request = ServiceRequest::query()->lockForUpdate()->findOrFail($offer->service_request_id);
 
         if ($offer->status === DriverOfferStatus::Accepted) {
-            return $offer->load(['serviceRequest.payment', 'driverProfile.user', 'assignment']);
+            return $this->load($offer);
         }
 
         if ($offer->status !== DriverOfferStatus::Pending) {
@@ -131,7 +131,7 @@ class OfferResponseService
                 'availability_status' => DriverAvailabilityStatus::Online,
             ]);
 
-            return $offer->load(['serviceRequest.payment', 'driverProfile.user']);
+            return $this->load($offer);
         }
 
         if ($request->status !== ServiceRequestStatus::SearchingDriver) {
@@ -230,7 +230,30 @@ class OfferResponseService
             'attempt_count' => 0,
             'available_at' => now(),
         ]);
+        $this->notifications->create(
+            $request->creator,
+            'SERVICE_DRIVER_ASSIGNED',
+            [
+                'title' => 'Tài xế đã nhận đơn',
+                'body' => 'Tài xế đang đến điểm đón của bạn.',
+                'service_request_id' => $request->public_id,
+            ],
+            $request->id,
+            $request->version,
+        );
 
-        return $offer->load(['serviceRequest.payment', 'driverProfile.user', 'assignment']);
+        return $this->load($offer);
+    }
+
+    private function load(DriverOffer $offer): DriverOffer
+    {
+        return $offer->load([
+            'serviceRequest.stops',
+            'serviceRequest.vehicleType',
+            'serviceRequest.payment',
+            'serviceRequest.rideBooking',
+            'driverProfile.user',
+            'assignment',
+        ]);
     }
 }

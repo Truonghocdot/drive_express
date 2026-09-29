@@ -8,10 +8,22 @@ import '../../widgets/goong_map_preview.dart';
 import '../chat/chat_with_driver_page.dart';
 import '../profile/rating_review_page.dart';
 
-class ActiveOrderTrackingPage extends StatelessWidget {
+class ActiveOrderTrackingPage extends StatefulWidget {
   const ActiveOrderTrackingPage({super.key, required this.controller});
 
   final ClientAppController controller;
+
+  @override
+  State<ActiveOrderTrackingPage> createState() =>
+      _ActiveOrderTrackingPageState();
+}
+
+class _ActiveOrderTrackingPageState extends State<ActiveOrderTrackingPage> {
+  GoongRoute? route;
+  String? routeKey;
+  bool routeLoading = false;
+
+  ClientAppController get controller => widget.controller;
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +32,19 @@ class ActiveOrderTrackingPage extends StatelessWidget {
       builder: (context, _) {
         final request = controller.activeRequest;
         final tracking = controller.tracking;
+        final canDrawRoute =
+            request?.pickupLatitude != null &&
+            request?.pickupLongitude != null &&
+            request?.dropoffLatitude != null &&
+            request?.dropoffLongitude != null;
+        final nextRouteKey = canDrawRoute
+            ? '${request!.id}:${request.pickupLatitude}:${request.pickupLongitude}:${request.dropoffLatitude}:${request.dropoffLongitude}'
+            : null;
+        if (nextRouteKey != null && nextRouteKey != routeKey && !routeLoading) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _loadRoute(request!),
+          );
+        }
         return Scaffold(
           appBar: AppBar(
             title: Text(
@@ -30,9 +55,12 @@ class ActiveOrderTrackingPage extends StatelessWidget {
             actions: [
               IconButton(
                 tooltip: 'Làm mới',
-                onPressed: controller.busy
+                onPressed: controller.busy || request == null
                     ? null
-                    : controller.refreshActiveRequest,
+                    : () {
+                        controller.refreshActiveRequest();
+                        _loadRoute(request, force: true);
+                      },
                 icon: const Icon(Icons.refresh),
               ),
             ],
@@ -42,10 +70,7 @@ class ActiveOrderTrackingPage extends StatelessWidget {
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    if (request.pickupLatitude != null &&
-                        request.pickupLongitude != null &&
-                        request.dropoffLatitude != null &&
-                        request.dropoffLongitude != null)
+                    if (canDrawRoute)
                       GoongMapPreview(
                         pickup: GoongCoordinate(
                           latitude: request.pickupLatitude!,
@@ -61,8 +86,11 @@ class ActiveOrderTrackingPage extends StatelessWidget {
                                 latitude: tracking!.liveLocation!.latitude,
                                 longitude: tracking.liveLocation!.longitude,
                               ),
+                        route: route?.geometry,
                         mapKey: const String.fromEnvironment('GOONG_MAP_KEY'),
                       ),
+                    if (routeLoading)
+                      const LinearProgressIndicator(minHeight: 2),
                     if (tracking?.locationStale == true) ...[
                       const SizedBox(height: 8),
                       const Text('Vị trí tài xế đang chậm cập nhật.'),
@@ -202,6 +230,46 @@ class ActiveOrderTrackingPage extends StatelessWidget {
     ServiceKind.drive => 'Chuyến xe',
   };
 
+  Future<void> _loadRoute(
+    ServiceRequestSummary request, {
+    bool force = false,
+  }) async {
+    if (request.pickupLatitude == null ||
+        request.pickupLongitude == null ||
+        request.dropoffLatitude == null ||
+        request.dropoffLongitude == null) {
+      return;
+    }
+    final key =
+        '${request.id}:${request.pickupLatitude}:${request.pickupLongitude}:${request.dropoffLatitude}:${request.dropoffLongitude}';
+    if (!force && routeKey == key) return;
+    final api = controller.goong;
+    if (api?.configured != true) return;
+    setState(() {
+      routeKey = key;
+      routeLoading = true;
+      route = null;
+    });
+    try {
+      final nextRoute = await api!.directions(
+        origin: GoongCoordinate(
+          latitude: request.pickupLatitude!,
+          longitude: request.pickupLongitude!,
+        ),
+        destination: GoongCoordinate(
+          latitude: request.dropoffLatitude!,
+          longitude: request.dropoffLongitude!,
+        ),
+        vehicle: request.service == ServiceKind.delivery ? 'bike' : 'car',
+      );
+      if (mounted && routeKey == key) setState(() => route = nextRoute);
+    } catch (_) {
+      // The map keeps a direct route when Goong Directions is unavailable.
+    } finally {
+      if (mounted && routeKey == key) setState(() => routeLoading = false);
+    }
+  }
+
   Future<void> _cancel(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -315,55 +383,73 @@ class _RoutePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 190),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.radio_button_checked,
-                size: 18,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: Text(request.pickupAddress ?? 'Điểm đón')),
-            ],
-          ),
-          Container(
-            width: 2,
-            height: 48,
-            margin: const EdgeInsets.only(left: 8),
-            color: Theme.of(context).colorScheme.outline,
-          ),
-          Row(
-            children: [
-              Icon(
-                Icons.location_on,
-                size: 18,
-                color: Theme.of(context).colorScheme.secondary,
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: Text(request.dropoffAddress ?? 'Điểm đến')),
-            ],
-          ),
-          const SizedBox(height: 28),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Icon(
-              Icons.near_me,
-              color: Theme.of(context).colorScheme.primary,
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _StopRow(
+              icon: Icons.trip_origin,
+              label: 'Điểm đón',
+              address: request.pickupAddress ?? 'Chưa có điểm đón',
+              color: const Color(0xFF047857),
             ),
-          ),
-        ],
+            if (request.dropoffAddress != null) ...[
+              const Padding(
+                padding: EdgeInsets.only(left: 11),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    height: 22,
+                    child: VerticalDivider(width: 2, thickness: 2),
+                  ),
+                ),
+              ),
+              _StopRow(
+                icon: Icons.location_on,
+                label: 'Điểm đến',
+                address: request.dropoffAddress!,
+                color: const Color(0xFFB42318),
+              ),
+            ],
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _StopRow extends StatelessWidget {
+  const _StopRow({
+    required this.icon,
+    required this.label,
+    required this.address,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String address;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 22, color: color),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: Theme.of(context).textTheme.labelLarge),
+              const SizedBox(height: 2),
+              Text(address, style: Theme.of(context).textTheme.bodyMedium),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -404,7 +490,7 @@ class _TrackingStatus extends StatelessWidget {
             if (tracking.liveLocation case final location?) ...[
               const SizedBox(height: 6),
               Text(
-                'Vị trí cập nhật ${_ageLabel(location.capturedAt)}',
+                'Vị trí tài xế cập nhật ${_ageLabel(location.capturedAt)}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],

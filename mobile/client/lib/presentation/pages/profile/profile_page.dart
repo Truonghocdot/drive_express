@@ -89,12 +89,13 @@ class ProfilePage extends StatelessWidget {
                     children: [
                       Text(
                         'Số dư ví lạnh',
-                        style: Theme.of(context).textTheme.bodyMedium
-                            ?.copyWith(color: colors.primaryFixedDim),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: colors.onPrimary.withValues(alpha: .82),
+                        ),
                       ),
                       Icon(
                         Icons.visibility_outlined,
-                        color: colors.primaryFixedDim,
+                        color: colors.onPrimary.withValues(alpha: .88),
                         size: 18,
                       ),
                     ],
@@ -225,7 +226,7 @@ class ProfilePage extends StatelessWidget {
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        color: colors.onPrimary.withValues(alpha: .12),
+        color: colors.onPrimary.withValues(alpha: .18),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(

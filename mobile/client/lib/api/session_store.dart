@@ -29,8 +29,8 @@ class FavoriteAddress {
       FavoriteAddress(
         label: json['label'].toString(),
         address: json['address'].toString(),
-        latitude: (json['latitude'] as num).toDouble(),
-        longitude: (json['longitude'] as num).toDouble(),
+        latitude: (json['latitude'] as num?)?.toDouble() ?? 0,
+        longitude: (json['longitude'] as num?)?.toDouble() ?? 0,
       );
 
   Map<String, dynamic> toJson() => {

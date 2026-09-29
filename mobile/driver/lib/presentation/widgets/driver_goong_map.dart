@@ -52,13 +52,15 @@ class _DriverGoongMapState extends State<DriverGoongMap> {
     if (widget.mapKey.trim().isEmpty) {
       return _MapMessage(
         height: widget.height,
-        message: 'Thêm GOONG_MAP_KEY để hiển thị bản đồ tài xế.',
+        message: 'Chưa có GOONG_MAP_KEY để tải nền bản đồ.',
+        current: widget.current,
       );
     }
     if (points.isEmpty) {
       return _MapMessage(
         height: widget.height,
         message: 'Đang chờ vị trí GPS của tài xế.',
+        current: widget.current,
       );
     }
     final center = NavigationCoordinate(
@@ -71,21 +73,36 @@ class _DriverGoongMapState extends State<DriverGoongMap> {
     );
     final map = SizedBox(
       height: widget.height,
-      child: MapLibreMap(
-        styleString: widget.styleUrl?.isNotEmpty == true
-            ? widget.styleUrl!
-            : 'https://tiles.goong.io/assets/goong_map_highlight.json?api_key=${Uri.encodeComponent(widget.mapKey)}',
-        initialCameraPosition: CameraPosition(
-          target: LatLng(center.latitude, center.longitude),
-          zoom: points.length == 1 ? 15 : 13,
-        ),
-        compassEnabled: false,
-        logoEnabled: false,
-        onMapCreated: (controller) => _controller = controller,
-        onStyleLoadedCallback: () {
-          _styleReady = true;
-          _drawMap();
-        },
+      child: Stack(
+        children: [
+          MapLibreMap(
+            styleString: widget.styleUrl?.isNotEmpty == true
+                ? widget.styleUrl!
+                : 'https://tiles.goong.io/assets/goong_map_highlight.json?api_key=${Uri.encodeComponent(widget.mapKey)}',
+            initialCameraPosition: CameraPosition(
+              target: LatLng(center.latitude, center.longitude),
+              zoom: points.length == 1 ? 15 : 13,
+            ),
+            compassEnabled: false,
+            logoEnabled: false,
+            onMapCreated: (controller) => _controller = controller,
+            onStyleLoadedCallback: () {
+              _styleReady = true;
+              _drawMap();
+            },
+          ),
+          Positioned(
+            top: 12,
+            left: 12,
+            child: IgnorePointer(
+              child: _DriverMapLegend(
+                hasCurrent: widget.current != null,
+                hasPickup: widget.pickup != null,
+                hasDropoff: widget.dropoff != null,
+              ),
+            ),
+          ),
+        ],
       ),
     );
     return widget.fullScreen
@@ -111,15 +128,15 @@ class _DriverGoongMapState extends State<DriverGoongMap> {
           geometry: route
               .map((point) => LatLng(point.latitude, point.longitude))
               .toList(growable: false),
-          lineColor: '#215F9A',
+          lineColor: '#155EEF',
           lineWidth: 6,
           lineOpacity: 0.9,
         ),
       );
     }
-    await _addMarker(controller, widget.current, 'Bạn', '#215F9A');
-    await _addMarker(controller, widget.pickup, 'Đón', '#146B52');
-    await _addMarker(controller, widget.dropoff, 'Đến', '#B35C21');
+    await _addMarker(controller, widget.current, 'Vị trí tài xế', '#155EEF');
+    await _addMarker(controller, widget.pickup, 'Điểm đón', '#047857');
+    await _addMarker(controller, widget.dropoff, 'Điểm đến', '#B42318');
     await _fitCamera(controller);
   }
 
@@ -144,9 +161,12 @@ class _DriverGoongMapState extends State<DriverGoongMap> {
 
   Future<void> _fitCamera(MapLibreMapController controller) async {
     final route = widget.route;
-    final points = route != null && route.isNotEmpty
-        ? [route.first, route.last]
-        : _visiblePoints;
+    final points = <NavigationCoordinate>[
+      if (route != null && route.isNotEmpty) route.first,
+      if (route != null && route.length > 1) route.last,
+      if (widget.current != null) widget.current!,
+      if (route == null || route.isEmpty) ..._visiblePoints,
+    ];
     if (points.isEmpty) return;
     if (points.length == 1) {
       await controller.animateCamera(
@@ -194,11 +214,90 @@ class _DriverGoongMapState extends State<DriverGoongMap> {
   }
 }
 
+class _DriverMapLegend extends StatelessWidget {
+  const _DriverMapLegend({
+    required this.hasCurrent,
+    required this.hasPickup,
+    required this.hasDropoff,
+  });
+
+  final bool hasCurrent;
+  final bool hasPickup;
+  final bool hasDropoff;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: context.driverTokens.surfaceLow.withValues(alpha: .96),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: context.driverTokens.divider),
+        boxShadow: const [
+          BoxShadow(color: Colors.black38, blurRadius: 8, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasCurrent)
+            const _DriverLegendItem(
+              color: Color(0xFF155EEF),
+              label: 'Vị trí tài xế',
+            ),
+          if (hasPickup) ...[
+            if (hasCurrent) const SizedBox(height: 4),
+            const _DriverLegendItem(
+              color: Color(0xFF047857),
+              label: 'Điểm đón',
+            ),
+          ],
+          if (hasDropoff) ...[
+            if (hasCurrent || hasPickup) const SizedBox(height: 4),
+            const _DriverLegendItem(
+              color: Color(0xFFB42318),
+              label: 'Điểm đến',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DriverLegendItem extends StatelessWidget {
+  const _DriverLegendItem({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: Theme.of(context).textTheme.labelSmall),
+      ],
+    );
+  }
+}
+
 class _MapMessage extends StatelessWidget {
-  const _MapMessage({required this.height, required this.message});
+  const _MapMessage({
+    required this.height,
+    required this.message,
+    this.current,
+  });
 
   final double height;
   final String message;
+  final NavigationCoordinate? current;
 
   @override
   Widget build(BuildContext context) {
@@ -210,15 +309,33 @@ class _MapMessage extends StatelessWidget {
         border: Border.all(color: context.driverTokens.divider),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.map_outlined,
-            color: context.driverTokens.secondary,
-            size: 32,
+          Row(
+            children: [
+              Icon(
+                Icons.map_outlined,
+                color: context.driverTokens.secondary,
+                size: 32,
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Text(message)),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(child: Text(message)),
+          if (current != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              'VỊ TRÍ TÀI XẾ',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${current!.latitude.toStringAsFixed(6)}, ${current!.longitude.toStringAsFixed(6)}',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ],
         ],
       ),
     );

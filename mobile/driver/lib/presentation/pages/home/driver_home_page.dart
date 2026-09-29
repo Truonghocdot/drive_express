@@ -24,6 +24,14 @@ class _DriverHomePageState extends State<DriverHomePage> {
   final shownOffers = <String>{};
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => widget.controller.refreshPosition(),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final controller = widget.controller;
     final active = controller.activeOffer;
@@ -112,6 +120,13 @@ class _DriverHomePageState extends State<DriverHomePage> {
                       child: const Icon(Icons.person_outline),
                     ),
                   ],
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _DriverLocationPill(
+                    position: controller.currentPosition,
+                  ),
                 ),
                 const Spacer(),
                 Align(
@@ -344,6 +359,66 @@ class _DriverHomePageState extends State<DriverHomePage> {
     return NavigationCoordinate(
       latitude: position.latitude,
       longitude: position.longitude,
+    );
+  }
+}
+
+class _DriverLocationPill extends StatelessWidget {
+  const _DriverLocationPill({required this.position});
+
+  final DriverPosition? position;
+
+  @override
+  Widget build(BuildContext context) {
+    final available = position != null;
+    return Container(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width - 32,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: context.driverTokens.surfaceLow.withValues(alpha: .96),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: available
+              ? context.driverTokens.secondary.withValues(alpha: .7)
+              : context.driverTokens.divider,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            available ? Icons.my_location : Icons.location_searching,
+            size: 18,
+            color: available
+                ? context.driverTokens.secondary
+                : context.driverTokens.muted,
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'VỊ TRÍ HIỆN TẠI',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+                Text(
+                  available
+                      ? 'GPS chính xác khoảng ${position!.accuracy.toStringAsFixed(0)} m'
+                      : 'Đang xác định GPS',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

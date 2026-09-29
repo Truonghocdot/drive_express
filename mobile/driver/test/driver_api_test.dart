@@ -69,6 +69,46 @@ void main() {
     expect(transport.body?['push_token'], 'driver-fcm-token');
     expect(transport.body?['app_type'], 'DRIVER_APP');
   });
+
+  test('parses hourly offers with missing optional numeric fields', () {
+    final offer = DriverOfferSummary.fromJson({
+      'id': 'offer-hourly',
+      'status': 'PENDING',
+      'estimated_pickup_distance_meters': null,
+      'estimated_driver_earning': null,
+      'expires_at': DateTime.now().toUtc().toIso8601String(),
+      'service_request': {
+        'id': 'request-hourly',
+        'service_type': 'HOURLY',
+        'status': 'DRIVER_ARRIVING',
+        'payment': {'method': 'CASH', 'customer_payable': null},
+        'stops': [
+          {'type': 'PICKUP', 'latitude': 10.77, 'longitude': 106.68},
+        ],
+      },
+    });
+
+    expect(offer.customerPayable, 0);
+    expect(offer.estimatedEarning, 0);
+    expect(offer.dropoffLatitude, offer.pickupLatitude);
+  });
+
+  test('reports an invalid offer without a pickup instead of casting null', () {
+    expect(
+      () => DriverOfferSummary.fromJson({
+        'id': 'offer-invalid',
+        'status': 'PENDING',
+        'service_request': {
+          'id': 'request-invalid',
+          'service_type': 'DRIVE',
+          'status': 'SEARCHING_DRIVER',
+          'payment': {'method': 'CASH'},
+          'stops': null,
+        },
+      }),
+      throwsA(isA<DriverApiException>()),
+    );
+  });
 }
 
 class FixedPushTokenProvider extends PushTokenProvider {

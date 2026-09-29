@@ -149,6 +149,10 @@ function titleFor(type: string): string {
     return 'Incident update';
   }
 
+  if (type === 'SERVICE_DRIVER_ASSIGNED') {
+    return 'Tài xế đã nhận đơn';
+  }
+
   return 'New notification';
 }
 
@@ -163,6 +167,10 @@ function bodyFor(type: string): string {
 
   if (type === 'SERVICE_REQUEST_CANCELLED') {
     return 'Your service request was cancelled.';
+  }
+
+  if (type === 'SERVICE_DRIVER_ASSIGNED') {
+    return 'Tài xế đang đến điểm đón của bạn.';
   }
 
   return 'There is a new update in the app.';

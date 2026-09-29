@@ -337,6 +337,16 @@ class ClientAppController extends ChangeNotifier {
     });
   }
 
+  Future<void> openServiceRequest(String requestId) async {
+    await _guard(() async {
+      activeRequest = await gateway.loadServiceRequest(_session, requestId);
+      await sessionStore?.writeLastRequestId(requestId);
+      realtime?.watch(requestId);
+      await _loadTracking();
+      _startPolling();
+    });
+  }
+
   Future<void> loadWallet() async {
     await _guard(() async => wallet = await gateway.loadWallet(_session));
   }
