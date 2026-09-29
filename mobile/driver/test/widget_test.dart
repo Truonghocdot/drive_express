@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:driver/api/driver_api.dart';
+import 'package:driver/api/device_location.dart';
 import 'package:driver/main.dart';
 import 'package:driver/presentation/pages/auth/driver_forgot_password_page.dart';
 import 'package:driver/presentation/pages/auth/driver_register_page.dart';
@@ -76,6 +79,44 @@ void main() {
     expect(gateway.respondCalls, 1);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('shows a Vietnamese GPS timeout only after login', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      DriverApp(
+        gateway: FakeDriverGateway(),
+        locationSource: TimeoutLocation(),
+        initialSession: const DriverSession(
+          baseUrl: 'http://localhost/api/v1',
+          token: '',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('TimeoutException'), findsNothing);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Số điện thoại'),
+      '0901234567',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Mật khẩu'),
+      'password',
+    );
+    await tester.tap(find.byKey(const Key('driver-login-button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Không thể lấy vị trí trong 12 giây. Hãy bật GPS và thử lại.'),
+      findsOneWidget,
+    );
+  });
+}
+
+class TimeoutLocation implements DriverLocationSource {
+  @override
+  Future<DriverPosition> current() async => throw TimeoutException('timed out');
 }
 
 class FakeDriverGateway implements DriverGateway {

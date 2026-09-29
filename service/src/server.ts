@@ -17,6 +17,7 @@ const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
 const eventChannel = process.env.MATCHING_OUTBOX_CHANNEL ?? 'worker.outbox';
 const locationChannel = process.env.DRIVER_LOCATION_CHANNEL ?? 'worker.location';
 const workerApiUrl = process.env.WORKER_API_URL ?? 'http://127.0.0.1:8000/api/v1';
+const debug = process.env.SERVICE_DEBUG === 'true';
 
 const app = express();
 const server = http.createServer(app);
@@ -31,6 +32,8 @@ const pushSender = new FirebasePushSender();
 const pushDispatcher = new PushNotificationDispatcher(
   new WorkerNotificationClient(workerApiUrl, process.env.REALTIME_INTERNAL_TOKEN ?? ''),
   pushSender,
+  console,
+  debug,
 );
 const gateway = new RoomGateway(
   io,
@@ -38,7 +41,13 @@ const gateway = new RoomGateway(
 );
 
 app.get('/health', (_request, response) => {
-  response.json({ status: 'ok', service: 'realtime', timestamp: new Date().toISOString() });
+  response.json({
+    status: 'ok',
+    service: 'realtime',
+    push_configured: pushSender.enabled,
+    internal_dispatch_configured: Boolean(process.env.REALTIME_INTERNAL_TOKEN),
+    timestamp: new Date().toISOString(),
+  });
 });
 
 io.use(async (socket, next) => {
@@ -56,6 +65,11 @@ io.use(async (socket, next) => {
 io.on('connection', (socket) => gateway.registerHandlers(socket));
 
 const handleEvent = async (event: Parameters<RoomGateway['publish']>[0]): Promise<void> => {
+  if (debug) {
+    console.info(
+      `[event] id=${event.event_id} type=${event.event_type} aggregate=${event.aggregate_type}:${event.aggregate_id}`,
+    );
+  }
   gateway.publish(event);
   await pushDispatcher.dispatch(event);
 };

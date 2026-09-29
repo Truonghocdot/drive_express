@@ -44,6 +44,8 @@ String formatClientValue(String value) {
     'APPROVED' => 'Đã phê duyệt',
     'REJECTED' => 'Đã từ chối',
     'FAILED' => 'Thất bại',
+    'SERVICE_DRIVER_ASSIGNED' => 'Tài xế đã nhận đơn',
+    'DRIVER_OFFER_RECEIVED' => 'Có cuốc mới gần bạn',
     _ => value,
   };
 }

@@ -35,7 +35,6 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   final dropoffAddress = TextEditingController();
   final goodsType = TextEditingController(text: 'GENERAL');
   final weight = TextEditingController(text: '5');
-  final passengers = TextEditingController(text: '1');
   final duration = TextEditingController(text: '1');
   final passengerName = TextEditingController();
   final passengerPhone = TextEditingController();
@@ -49,6 +48,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   bool _pickupConfirmed = false;
   bool _dropoffConfirmed = false;
   DateTime? scheduledAt;
+  Timer? _voucherDebounce;
 
   @override
   void initState() {
@@ -73,7 +73,6 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       dropoffAddress,
       goodsType,
       weight,
-      passengers,
       duration,
       passengerName,
       passengerPhone,
@@ -81,6 +80,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
     ]) {
       controller.dispose();
     }
+    _voucherDebounce?.cancel();
     super.dispose();
   }
 
@@ -88,6 +88,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   Widget build(BuildContext context) {
     final delivery = widget.service == ServiceKind.delivery;
     final hourly = widget.service == ServiceKind.hourly;
+    final drive = widget.service == ServiceKind.drive;
     final goong = widget.controller.goong;
     return AnimatedBuilder(
       animation: widget.controller,
@@ -128,11 +129,15 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                     pickupAddress.text = place.address;
                   });
                   unawaited(_updateRoute());
+                  unawaited(_refreshDriveQuotes());
                 },
-                onInputChanged: () => setState(() {
-                  _pickupConfirmed = false;
-                  _route = null;
-                }),
+                onInputChanged: () {
+                  setState(() {
+                    _pickupConfirmed = false;
+                    _route = null;
+                  });
+                  _clearDriveQuotes();
+                },
                 onUseCurrentLocation: widget.controller.currentPosition == null
                     ? null
                     : _useCurrentLocation,
@@ -153,12 +158,54 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                       dropoffAddress.text = place.address;
                     });
                     unawaited(_updateRoute());
+                    unawaited(_refreshDriveQuotes());
                   },
-                  onInputChanged: () => setState(() {
-                    _dropoffConfirmed = false;
-                    _route = null;
-                  }),
+                  onInputChanged: () {
+                    setState(() {
+                      _dropoffConfirmed = false;
+                      _route = null;
+                    });
+                    _clearDriveQuotes();
+                  },
                 ),
+              if (drive && widget.controller.busy) ...[
+                const SizedBox(height: 16),
+                const LinearProgressIndicator(),
+              ],
+              if (drive &&
+                  _driveLocationsReady &&
+                  widget.controller.quotes.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Chọn xe',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    for (final quote in widget.controller.quotes) ...[
+                      Expanded(
+                        child: SizedBox(
+                          height: 140,
+                          child: RideQuoteCard(
+                            key: Key('ride-quote-${quote.id}'),
+                            quote: quote,
+                            selected:
+                                widget.controller.selectedQuote?.id == quote.id,
+                            compact: true,
+                            onTap: () => widget.controller.selectQuote(quote),
+                          ),
+                        ),
+                      ),
+                      if (quote != widget.controller.quotes.last)
+                        const SizedBox(width: 8),
+                    ],
+                  ],
+                ),
+              ],
               if (!hourly && _pickupConfirmed && _dropoffConfirmed)
                 GoongMapPreview(
                   pickup: _pickup,
@@ -187,21 +234,17 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                 const SizedBox(height: 10),
                 ErrorBanner(message: error),
               ],
-              const SizedBox(height: 22),
-              _StepHeader(
-                step: '2',
-                title: delivery
-                    ? 'Thông tin hàng hóa'
-                    : hourly
-                    ? 'Thời lượng thuê'
-                    : 'Thông tin chuyến xe',
-                subtitle: delivery
-                    ? 'Nhập đủ thông tin để hệ thống tính cước chính xác.'
-                    : hourly
-                    ? 'Chọn số giờ phục vụ, tối đa 12 giờ.'
-                    : 'Chọn số hành khách và thời gian di chuyển.',
-              ),
-              const SizedBox(height: 12),
+              if (!drive) ...[
+                const SizedBox(height: 22),
+                _StepHeader(
+                  step: '2',
+                  title: delivery ? 'Thông tin hàng hóa' : 'Thời lượng thuê',
+                  subtitle: delivery
+                      ? 'Nhập đủ thông tin để hệ thống tính cước chính xác.'
+                      : 'Chọn số giờ phục vụ, tối đa 12 giờ.',
+                ),
+                const SizedBox(height: 12),
+              ],
               if (delivery) ...[
                 TextFormField(
                   controller: goodsType,
@@ -232,7 +275,8 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                     prefixIcon: Icon(Icons.scale_outlined),
                   ),
                 ),
-              ] else if (hourly)
+              ],
+              if (hourly)
                 TextFormField(
                   controller: duration,
                   validator: (value) {
@@ -245,21 +289,6 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
                   decoration: const InputDecoration(
                     labelText: 'Số giờ thuê',
                     prefixIcon: Icon(Icons.schedule_outlined),
-                  ),
-                )
-              else
-                TextFormField(
-                  controller: passengers,
-                  validator: (value) {
-                    final parsed = int.tryParse(value ?? '');
-                    return parsed == null || parsed <= 0
-                        ? 'Số hành khách phải lớn hơn 0.'
-                        : null;
-                  },
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Số hành khách',
-                    prefixIcon: Icon(Icons.people_outline),
                   ),
                 ),
               if (!delivery && widget.isProxyBooking) ...[
@@ -290,6 +319,15 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
               const SizedBox(height: 10),
               TextField(
                 controller: voucher,
+                onChanged: drive
+                    ? (_) {
+                        _voucherDebounce?.cancel();
+                        _voucherDebounce = Timer(
+                          const Duration(milliseconds: 450),
+                          () => unawaited(_refreshDriveQuotes()),
+                        );
+                      }
+                    : null,
                 decoration: const InputDecoration(
                   labelText: 'Mã giảm giá (không bắt buộc)',
                   prefixIcon: Icon(Icons.local_offer_outlined),
@@ -321,12 +359,23 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
               const SizedBox(height: 12),
               SizedBox(
                 height: 52,
-                child: FilledButton.icon(
-                  key: const Key('quote-button'),
-                  onPressed: widget.controller.busy ? null : _quote,
-                  icon: const Icon(Icons.calculate_outlined),
-                  label: const Text('Nhận báo giá'),
-                ),
+                child: drive
+                    ? FilledButton.icon(
+                        key: const Key('continue-button'),
+                        onPressed:
+                            widget.controller.busy ||
+                                widget.controller.selectedQuote == null
+                            ? null
+                            : _continue,
+                        icon: const Icon(Icons.arrow_forward),
+                        label: const Text('Tiếp tục'),
+                      )
+                    : FilledButton.icon(
+                        key: const Key('quote-button'),
+                        onPressed: widget.controller.busy ? null : _quote,
+                        icon: const Icon(Icons.calculate_outlined),
+                        label: const Text('Nhận báo giá'),
+                      ),
               ),
             ],
           ),
@@ -348,10 +397,10 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
       pickupAddress.text = 'Vị trí hiện tại';
     });
     unawaited(_updateRoute());
+    unawaited(_refreshDriveQuotes());
   }
 
   Future<void> _quote() async {
-    final delivery = widget.service == ServiceKind.delivery;
     final hourly = widget.service == ServiceKind.hourly;
     if (!formKey.currentState!.validate()) return;
     final goong = widget.controller.goong;
@@ -374,52 +423,9 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
     if (goong?.configured == true && _route == null) {
       await _updateRoute();
     }
-    await widget.controller.requestQuote(
-      BookingDraft(
-        service: widget.service,
-        pickup: LocationDraft(
-          address: pickupAddress.text.trim(),
-          latitude: _pickup.latitude,
-          longitude: _pickup.longitude,
-        ),
-        dropoff: hourly
-            ? null
-            : LocationDraft(
-                address: dropoffAddress.text.trim(),
-                latitude: _dropoff.latitude,
-                longitude: _dropoff.longitude,
-              ),
-        goodsType: goodsType.text.trim(),
-        weightKg: double.tryParse(weight.text.replaceAll(',', '.')) ?? 0,
-        passengerCount: int.tryParse(passengers.text) ?? 1,
-        voucherCode: voucher.text.trim().isEmpty ? null : voucher.text.trim(),
-        scheduledAt: delivery ? null : scheduledAt,
-        vehicleTypeId: hourly || delivery
-            ? widget.controller.vehicleIdForKey('MOTORBIKE')
-            : null,
-        vehicleTypeIds: delivery || hourly
-            ? null
-            : [
-                widget.controller.vehicleIdForKey('MOTORBIKE'),
-                widget.controller.vehicleIdForKey('CAR_4_SEAT'),
-              ].whereType<String>().toList(growable: false),
-        passengerName: widget.isProxyBooking ? passengerName.text.trim() : null,
-        passengerPhone: widget.isProxyBooking
-            ? passengerPhone.text.trim()
-            : null,
-        durationHours: hourly ? int.tryParse(duration.text) : null,
-      ),
-    );
+    await widget.controller.requestQuote(_draft());
     if (widget.controller.error != null || !mounted) return;
-    if (widget.service == ServiceKind.drive &&
-        widget.controller.quotes.length > 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => RideQuoteSelectionPage(controller: widget.controller),
-        ),
-      );
-    } else if (widget.controller.quote != null) {
+    if (widget.controller.quote != null) {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -427,6 +433,68 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
         ),
       );
     }
+  }
+
+  bool get _driveLocationsReady =>
+      _pickupConfirmed &&
+      _dropoffConfirmed &&
+      pickupAddress.text.trim().isNotEmpty &&
+      dropoffAddress.text.trim().isNotEmpty;
+
+  void _clearDriveQuotes() {
+    if (widget.service == ServiceKind.drive) widget.controller.clearQuotes();
+  }
+
+  Future<void> _refreshDriveQuotes() async {
+    if (widget.service != ServiceKind.drive || !_driveLocationsReady) return;
+    await widget.controller.requestQuote(_draft());
+  }
+
+  BookingDraft _draft() {
+    final delivery = widget.service == ServiceKind.delivery;
+    final hourly = widget.service == ServiceKind.hourly;
+    return BookingDraft(
+      service: widget.service,
+      pickup: LocationDraft(
+        address: pickupAddress.text.trim(),
+        latitude: _pickup.latitude,
+        longitude: _pickup.longitude,
+      ),
+      dropoff: hourly
+          ? null
+          : LocationDraft(
+              address: dropoffAddress.text.trim(),
+              latitude: _dropoff.latitude,
+              longitude: _dropoff.longitude,
+            ),
+      goodsType: goodsType.text.trim(),
+      weightKg: double.tryParse(weight.text.replaceAll(',', '.')) ?? 0,
+      passengerCount: 1,
+      voucherCode: voucher.text.trim().isEmpty ? null : voucher.text.trim(),
+      scheduledAt: delivery ? null : scheduledAt,
+      vehicleTypeId: hourly || delivery
+          ? widget.controller.vehicleIdForKey('MOTORBIKE')
+          : null,
+      vehicleTypeIds: delivery || hourly
+          ? null
+          : [
+              widget.controller.vehicleIdForKey('MOTORBIKE'),
+              widget.controller.vehicleIdForKey('CAR_4_SEAT'),
+            ].whereType<String>().toList(growable: false),
+      passengerName: widget.isProxyBooking ? passengerName.text.trim() : null,
+      passengerPhone: widget.isProxyBooking ? passengerPhone.text.trim() : null,
+      durationHours: hourly ? int.tryParse(duration.text) : null,
+    );
+  }
+
+  void _continue() {
+    if (widget.controller.selectedQuote == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OrderCheckoutPage(controller: widget.controller),
+      ),
+    );
   }
 
   Future<void> _updateRoute() async {
@@ -479,6 +547,7 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
         time.minute,
       ),
     );
+    unawaited(_refreshDriveQuotes());
   }
 }
 
@@ -665,14 +734,18 @@ class _MapPending extends StatelessWidget {
       height: 116,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFE7EFEA),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFC8D7D0)),
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.map_outlined, color: Color(0xFF146B52), size: 30),
-          SizedBox(width: 12),
+          Icon(
+            Icons.map_outlined,
+            color: Theme.of(context).colorScheme.primary,
+            size: 30,
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Text('Chọn điểm đón và điểm đến để xem tuyến đường.'),
           ),
@@ -733,9 +806,16 @@ class _RouteSummary extends StatelessWidget {
       children: [
         const Icon(Icons.route_outlined, size: 18),
         const SizedBox(width: 8),
-        Text('${kilometers.toStringAsFixed(1)} km'),
-        const SizedBox(width: 16),
-        Text('$minutes phút dự kiến'),
+        Expanded(
+          child: Wrap(
+            spacing: 16,
+            runSpacing: 2,
+            children: [
+              Text('${kilometers.toStringAsFixed(1)} km'),
+              Text('$minutes phút dự kiến'),
+            ],
+          ),
+        ),
       ],
     );
   }

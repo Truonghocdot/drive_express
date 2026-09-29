@@ -205,34 +205,7 @@ class _JobNavigationPageState extends State<JobNavigationPage> {
       routeError = null;
     });
     try {
-      final position = await controller.refreshPosition();
-      if (position == null) {
-        throw StateError('Không lấy được vị trí hiện tại của tài xế.');
-      }
-      final api = controller.goong;
-      if (api?.configured != true) {
-        throw const GoongNavigationException(
-          'Chưa cấu hình GOONG_API_KEY cho ứng dụng tài xế.',
-        );
-      }
-      final target =
-          offer.serviceType != 'HOURLY' && _usesDropoff(offer.serviceStatus)
-          ? NavigationCoordinate(
-              latitude: offer.dropoffLatitude,
-              longitude: offer.dropoffLongitude,
-            )
-          : NavigationCoordinate(
-              latitude: offer.pickupLatitude,
-              longitude: offer.pickupLongitude,
-            );
-      final nextRoute = await api!.directions(
-        origin: NavigationCoordinate(
-          latitude: position.latitude,
-          longitude: position.longitude,
-        ),
-        destination: target,
-        vehicle: offer.serviceType == 'DELIVERY' ? 'bike' : 'car',
-      );
+      final nextRoute = await controller.calculateRoute(offer);
       if (mounted &&
           '${controller.activeOffer?.id}:${controller.activeOffer?.serviceStatus}' ==
               routeKey) {

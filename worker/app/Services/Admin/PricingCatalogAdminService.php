@@ -3,6 +3,7 @@
 namespace App\Services\Admin;
 
 use App\Enums\RoleKey;
+use App\Enums\ServiceType;
 use App\Models\AuditLog;
 use App\Models\PricingRule;
 use App\Models\SystemSetting;
@@ -106,9 +107,21 @@ class PricingCatalogAdminService
         return $setting;
     }
 
-    /** @param array{quote_ttl_seconds: int|float, rounding_unit: int|float, float_tolerance: int|float, vietqr_bank_code: string, vietqr_account_number: string, vietqr_account_name: string} $data */
+    /** @param array{quote_ttl_seconds: int|float, rounding_unit: int|float, float_tolerance: int|float, vietqr_bank_code: string, vietqr_account_number: string, vietqr_account_name: string, hourly_enabled: bool} $data */
     public function saveSystemSettings(array $data, User $admin): void
     {
+        if ($data['hourly_enabled'] && ! PricingRule::query()
+            ->where('service_type', ServiceType::Hourly)
+            ->where('is_active', true)
+            ->whereNotNull('hourly_rate')
+            ->where('effective_from', '<=', now())
+            ->where(fn ($query) => $query->whereNull('effective_to')->orWhere('effective_to', '>', now()))
+            ->exists()) {
+            throw ValidationException::withMessages([
+                'hourly_enabled' => ['Cần có bảng giá thuê giờ đang hoạt động trước khi bật dịch vụ.'],
+            ]);
+        }
+
         foreach ([
             'pricing.quote_ttl_seconds' => $data['quote_ttl_seconds'],
             'pricing.rounding_unit' => $data['rounding_unit'],
@@ -116,6 +129,7 @@ class PricingCatalogAdminService
             'finance.vietqr.bank_code' => json_encode($data['vietqr_bank_code'], JSON_UNESCAPED_UNICODE),
             'finance.vietqr.account_number' => json_encode($data['vietqr_account_number'], JSON_UNESCAPED_UNICODE),
             'finance.vietqr.account_name' => json_encode($data['vietqr_account_name'], JSON_UNESCAPED_UNICODE),
+            'features.hourly_enabled' => $data['hourly_enabled'],
         ] as $key => $value) {
             $setting = SystemSetting::query()->whereKey($key)->first();
             $payload = [
@@ -154,10 +168,19 @@ class PricingCatalogAdminService
             'finance.vietqr.bank_code',
             'finance.vietqr.account_number',
             'finance.vietqr.account_name',
+            'features.hourly_enabled',
         ];
 
         if (! in_array($key, $allowedKeys, true)) {
             throw ValidationException::withMessages(['key' => ['Thiết lập giá này không được hỗ trợ.']]);
+        }
+
+        if ($key === 'features.hourly_enabled') {
+            if (! is_bool($value)) {
+                throw ValidationException::withMessages(['value' => ['Cờ bật dịch vụ phải là true hoặc false.']]);
+            }
+
+            return;
         }
 
         if (str_starts_with($key, 'finance.vietqr.')) {

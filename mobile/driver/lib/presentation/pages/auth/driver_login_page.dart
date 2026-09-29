@@ -81,10 +81,6 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
                     const SizedBox(height: 12),
                     DriverErrorBanner(message: error),
                   ],
-                  if (state.locationError case final locationError?) ...[
-                    const SizedBox(height: 12),
-                    DriverErrorBanner(message: locationError),
-                  ],
                   const SizedBox(height: 20),
                   SizedBox(
                     height: 48,

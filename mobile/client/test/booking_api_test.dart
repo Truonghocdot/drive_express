@@ -97,6 +97,21 @@ void main() {
     expect(voucher.discountValue, 0);
     expect(account.pointsBalance, 0);
   });
+
+  test('parses notification title and body from notification data', () {
+    final notification = AppNotificationSummary.fromJson({
+      'id': 'notification-id',
+      'type': 'SERVICE_DRIVER_ASSIGNED',
+      'read_at': null,
+      'data': {
+        'title': 'Tài xế đã nhận đơn',
+        'body': 'Tài xế đang đến điểm đón của bạn.',
+      },
+    });
+
+    expect(notification.title, 'Tài xế đã nhận đơn');
+    expect(notification.body, 'Tài xế đang đến điểm đón của bạn.');
+  });
 }
 
 class FixedPushTokenProvider extends PushTokenProvider {

@@ -14,6 +14,7 @@ use App\Models\OutboxEvent;
 use App\Models\ServiceRequest;
 use App\Models\ServiceStatusHistory;
 use App\Services\Finance\DriverDailyCodLimitService;
+use App\Services\Notification\NotificationService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -24,6 +25,7 @@ class DriverMatchingService
     public function __construct(
         private readonly DriverPresenceStore $presenceStore,
         private readonly DriverDailyCodLimitService $dailyCodLimit,
+        private readonly NotificationService $notifications,
     ) {}
 
     /** @return Collection<int, DriverOffer> */
@@ -111,6 +113,16 @@ class DriverMatchingService
                     'attempt_count' => 0,
                     'available_at' => now(),
                 ]);
+                $this->notifications->create(
+                    $profile->user,
+                    'DRIVER_OFFER_RECEIVED',
+                    [
+                        'service_request_id' => $request->public_id,
+                        'offer_id' => $offer->public_id,
+                    ],
+                    $request->id,
+                    $request->version,
+                );
             }
 
             $request->forceFill(['search_attempt' => $currentBatch])->save();
@@ -193,7 +205,7 @@ class DriverMatchingService
                 $query->where('service_type', $request->service_type->value)
                     ->where('is_active', true);
             })
-            ->with(['vehicles' => function ($query) use ($request): void {
+            ->with(['user', 'vehicles' => function ($query) use ($request): void {
                 $query->where('vehicle_type_id', $request->vehicle_type_id)
                     ->where('status', ReviewableStatus::Approved->value)
                     ->where('is_selected', true);

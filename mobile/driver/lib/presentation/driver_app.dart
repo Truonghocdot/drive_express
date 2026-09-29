@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -6,6 +8,7 @@ import '../api/driver_api.dart';
 import '../api/driver_realtime.dart';
 import '../api/goong_navigation_api.dart';
 import '../api/session_store.dart';
+import '../api/push_token_provider.dart';
 import 'driver_app_controller.dart';
 import 'pages/auth/driver_kyc_page.dart';
 import 'pages/auth/driver_login_page.dart';
@@ -21,6 +24,7 @@ class DriverApp extends StatefulWidget {
     this.realtime,
     this.locationSource,
     this.goong,
+    this.pushTokenProvider,
   });
 
   final DriverGateway gateway;
@@ -29,12 +33,16 @@ class DriverApp extends StatefulWidget {
   final DriverRealtime? realtime;
   final DriverLocationSource? locationSource;
   final GoongNavigationApi? goong;
+  final PushTokenProvider? pushTokenProvider;
 
   @override
   State<DriverApp> createState() => _DriverAppState();
 }
 
 class _DriverAppState extends State<DriverApp> {
+  final messengerKey = GlobalKey<ScaffoldMessengerState>();
+  StreamSubscription? foregroundSubscription;
+  StreamSubscription? openedSubscription;
   late final DriverAppController controller = DriverAppController(
     gateway: widget.gateway,
     initialSession: widget.initialSession,
@@ -48,11 +56,18 @@ class _DriverAppState extends State<DriverApp> {
   void initState() {
     super.initState();
     controller.initialize();
-    controller.prepareLocation();
+    foregroundSubscription = widget.pushTokenProvider?.foregroundMessages
+        .listen(_handleForegroundMessage);
+    openedSubscription = widget.pushTokenProvider?.openedMessages.listen(
+      _handleOpenedMessage,
+    );
+    _handleInitialMessage();
   }
 
   @override
   void dispose() {
+    foregroundSubscription?.cancel();
+    openedSubscription?.cancel();
     controller.dispose();
     super.dispose();
   }
@@ -60,6 +75,7 @@ class _DriverAppState extends State<DriverApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scaffoldMessengerKey: messengerKey,
       debugShowCheckedModeBanner: false,
       title: 'Ứng dụng tài xế',
       locale: const Locale('vi', 'VN'),
@@ -86,5 +102,26 @@ class _DriverAppState extends State<DriverApp> {
         },
       ),
     );
+  }
+
+  Future<void> _handleInitialMessage() async {
+    final message = await widget.pushTokenProvider?.initialMessage();
+    if (message != null) await _handleOpenedMessage(message);
+  }
+
+  void _handleForegroundMessage(dynamic message) {
+    unawaited(controller.loadOffers());
+    unawaited(controller.loadNotifications());
+    final title = message.notification?.title ?? 'Drive';
+    final body = message.notification?.body ?? 'Bạn có cập nhật mới.';
+    messengerKey.currentState?.showSnackBar(
+      SnackBar(content: Text('$title: $body')),
+    );
+  }
+
+  Future<void> _handleOpenedMessage(dynamic message) async {
+    if (!controller.authenticated || controller.onboarding) return;
+    await controller.loadOffers();
+    await controller.loadNotifications();
   }
 }

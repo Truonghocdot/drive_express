@@ -9,6 +9,7 @@ abstract interface class BookingSessionStore {
   Future<void> writeToken(String token);
   Future<String?> readLastRequestId();
   Future<void> writeLastRequestId(String id);
+  Future<void> clearLastRequestId();
   Future<void> clear();
 }
 
@@ -77,6 +78,10 @@ class SecureBookingSessionStore
   @override
   Future<void> writeLastRequestId(String id) =>
       _storage.write(key: 'customer_last_request', value: id);
+
+  @override
+  Future<void> clearLastRequestId() =>
+      _storage.delete(key: 'customer_last_request');
 
   @override
   Future<List<FavoriteAddress>> readFavoriteAddresses(String namespace) async {

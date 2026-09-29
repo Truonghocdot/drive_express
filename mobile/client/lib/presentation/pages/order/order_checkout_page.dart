@@ -87,9 +87,6 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
                       ),
                       if (quote.service != ServiceKind.delivery) ...[
                         const SizedBox(height: 6),
-                        Text(
-                          '${widget.controller.quoteDraft?.passengerCount ?? 1} hành khách',
-                        ),
                         if (quote.service == ServiceKind.hourly)
                           Text(
                             '${widget.controller.quoteDraft?.durationHours ?? 1} giờ thuê',
@@ -202,7 +199,7 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
           ? recipient.text.trim()
           : null,
     );
-    if (widget.controller.activeRequest != null && mounted) {
+    if (widget.controller.hasActiveRequest && mounted) {
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(

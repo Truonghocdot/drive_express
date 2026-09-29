@@ -121,6 +121,7 @@ class _DriverGoongMapState extends State<DriverGoongMap> {
     if (controller == null || !_styleReady || !mounted) return;
     await controller.clearLines();
     await controller.clearSymbols();
+    await controller.clearCircles();
     final route = widget.route;
     if (route != null && route.length > 1) {
       await controller.addLine(
@@ -134,27 +135,28 @@ class _DriverGoongMapState extends State<DriverGoongMap> {
         ),
       );
     }
-    await _addMarker(controller, widget.current, 'Vị trí tài xế', '#155EEF');
-    await _addMarker(controller, widget.pickup, 'Điểm đón', '#047857');
-    await _addMarker(controller, widget.dropoff, 'Điểm đến', '#B42318');
+    await _addMarker(controller, widget.current, color: '#155EEF', radius: 9);
+    await _addMarker(controller, widget.pickup, color: '#047857', radius: 10);
+    await _addMarker(controller, widget.dropoff, color: '#B42318', radius: 10);
     await _fitCamera(controller);
   }
 
   Future<void> _addMarker(
     MapLibreMapController controller,
-    NavigationCoordinate? coordinate,
-    String label,
-    String color,
-  ) async {
+    NavigationCoordinate? coordinate, {
+    required String color,
+    required double radius,
+  }) async {
     if (coordinate == null) return;
-    await controller.addSymbol(
-      SymbolOptions(
+    await controller.addCircle(
+      CircleOptions(
         geometry: LatLng(coordinate.latitude, coordinate.longitude),
-        textField: label,
-        textColor: color,
-        textHaloColor: '#FFFFFF',
-        textHaloWidth: 2,
-        textSize: 14,
+        circleRadius: radius,
+        circleColor: color,
+        circleStrokeColor: '#FFFFFF',
+        circleStrokeWidth: 3,
+        circleOpacity: 1,
+        circleStrokeOpacity: 1,
       ),
     );
   }

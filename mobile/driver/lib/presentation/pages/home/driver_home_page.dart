@@ -22,6 +22,10 @@ class DriverHomePage extends StatefulWidget {
 
 class _DriverHomePageState extends State<DriverHomePage> {
   final shownOffers = <String>{};
+  NavigationRoute? route;
+  String? routeError;
+  String? loadedRouteKey;
+  bool routeLoading = false;
 
   @override
   void initState() {
@@ -42,6 +46,19 @@ class _DriverHomePageState extends State<DriverHomePage> {
     final unseen = pending
         .where((offer) => !shownOffers.contains(offer.id))
         .firstOrNull;
+    final routeKey = active == null
+        ? null
+        : '${active.id}:${active.serviceStatus}';
+    if (active case final currentActive?
+        when routeKey != loadedRouteKey && !routeLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (widget.controller.goong?.configured == true) {
+          _loadRoute(currentActive);
+        } else {
+          _markRouteUnavailable(routeKey!);
+        }
+      });
+    }
 
     if (unseen != null) {
       shownOffers.add(unseen.id);
@@ -72,6 +89,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
                   latitude: active.dropoffLatitude,
                   longitude: active.dropoffLongitude,
                 ),
+          route: active == null ? null : route?.geometry,
         ),
         Positioned.fill(
           child: IgnorePointer(
@@ -92,9 +110,10 @@ class _DriverHomePageState extends State<DriverHomePage> {
           ),
         ),
         SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   children: [
@@ -128,7 +147,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
                     position: controller.currentPosition,
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(height: 72),
                 Align(
                   alignment: Alignment.centerRight,
                   child: Column(
@@ -154,7 +173,15 @@ class _DriverHomePageState extends State<DriverHomePage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildBottomPanel(context, controller, online, active, pending),
+                _buildBottomPanel(
+                  context,
+                  controller,
+                  online,
+                  active,
+                  pending,
+                  routeLoading: routeLoading,
+                  routeError: routeError,
+                ),
               ],
             ),
           ),
@@ -168,8 +195,10 @@ class _DriverHomePageState extends State<DriverHomePage> {
     DriverAppController controller,
     bool online,
     DriverOfferSummary? active,
-    List<DriverOfferSummary> pending,
-  ) {
+    List<DriverOfferSummary> pending, {
+    required bool routeLoading,
+    required String? routeError,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -230,6 +259,22 @@ class _DriverHomePageState extends State<DriverHomePage> {
           if (controller.error case final error?) ...[
             const SizedBox(height: 10),
             DriverErrorBanner(message: error),
+          ],
+          if (routeLoading) ...[
+            const SizedBox(height: 10),
+            const LinearProgressIndicator(minHeight: 2),
+          ],
+          if (routeError case final error?) ...[
+            const SizedBox(height: 10),
+            DriverErrorBanner(message: error),
+            TextButton.icon(
+              onPressed: () {
+                final current = controller.activeOffer;
+                if (current != null) _loadRoute(current, force: true);
+              },
+              icon: const Icon(Icons.alt_route_outlined),
+              label: const Text('Thử lại chỉ đường'),
+            ),
           ],
           if (controller.locationError case final locationError?
               when locationError != controller.error) ...[
@@ -306,6 +351,48 @@ class _DriverHomePageState extends State<DriverHomePage> {
         ],
       ),
     );
+  }
+
+  Future<void> _loadRoute(
+    DriverOfferSummary offer, {
+    bool force = false,
+  }) async {
+    if (!mounted || routeLoading) return;
+    final key = '${offer.id}:${offer.serviceStatus}';
+    if (!force && loadedRouteKey == key) return;
+    setState(() {
+      routeLoading = true;
+      routeError = null;
+      route = null;
+    });
+    try {
+      final nextRoute = await widget.controller.calculateRoute(offer);
+      if (mounted &&
+          '${widget.controller.activeOffer?.id}:${widget.controller.activeOffer?.serviceStatus}' ==
+              key) {
+        setState(() {
+          route = nextRoute;
+          loadedRouteKey = key;
+        });
+      }
+    } catch (exception) {
+      if (mounted) {
+        setState(() {
+          loadedRouteKey = key;
+          routeError = exception.toString();
+        });
+      }
+    } finally {
+      if (mounted) setState(() => routeLoading = false);
+    }
+  }
+
+  void _markRouteUnavailable(String key) {
+    if (!mounted || loadedRouteKey == key) return;
+    setState(() {
+      loadedRouteKey = key;
+      routeError = 'Chưa cấu hình GOONG_API_KEY để chỉ đường cho tài xế.';
+    });
   }
 
   Future<void> _showOfferSheet(DriverOfferSummary offer) async {

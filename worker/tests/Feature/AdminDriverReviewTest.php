@@ -59,6 +59,31 @@ test('approves a submitted driver application through the shared review service'
     ])->assertOk()->assertJsonStructure(['token']);
 });
 
+test('adds hourly capability to an approved driver with a supported vehicle', function () {
+    $admin = User::factory()->create();
+    $adminRoleId = Role::query()->where('key', RoleKey::Admin->value)->value('id');
+    $admin->roles()->attach($adminRoleId, ['granted_at' => now()]);
+    $vehicleType = VehicleType::query()->where('unique_key', 'MOTORBIKE')->firstOrFail();
+    $profile = DriverApplicationBuilder::submitted(
+        User::factory()->create(),
+        $vehicleType,
+        [ServiceType::Delivery],
+    );
+    $review = app(DriverReviewService::class);
+    $review->approve($profile, $admin);
+
+    $review->addCapability($profile, $admin, $vehicleType->id, ServiceType::Hourly);
+
+    $this->assertDatabaseHas('driver_service_capabilities', [
+        'driver_profile_id' => $profile->id,
+        'vehicle_type_id' => $vehicleType->id,
+        'service_type' => ServiceType::Hourly->value,
+        'is_active' => true,
+        'approved_by' => $admin->id,
+    ]);
+    $this->assertDatabaseHas('audit_logs', ['action' => 'DRIVER_CAPABILITY_ADDED']);
+});
+
 test('rejects a submitted application through the shared review service', function () {
     $admin = User::factory()->create();
     $adminRoleId = Role::query()->where('key', RoleKey::Admin->value)->value('id');

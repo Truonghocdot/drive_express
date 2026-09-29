@@ -60,9 +60,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                 ? null
                                 : Theme.of(context).colorScheme.primary,
                           ),
-                          title: Text(formatClientValue(notification.type)),
+                          title: Text(
+                            notification.title ??
+                                formatClientValue(notification.type),
+                          ),
                           subtitle: Text(
-                            notification.isRead ? 'Đã đọc' : 'Chưa đọc',
+                            notification.body ??
+                                (notification.isRead ? 'Đã đọc' : 'Chưa đọc'),
                           ),
                           trailing: notification.isRead
                               ? null

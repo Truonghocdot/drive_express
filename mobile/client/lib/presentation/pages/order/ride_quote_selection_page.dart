@@ -31,7 +31,7 @@ class RideQuoteSelectionPage extends StatelessWidget {
               for (final quote in quotes)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: _QuoteCard(
+                  child: RideQuoteCard(
                     quote: quote,
                     selected: selected?.id == quote.id,
                     onTap: () => controller.selectQuote(quote),
@@ -59,72 +59,117 @@ class RideQuoteSelectionPage extends StatelessWidget {
   }
 }
 
-class _QuoteCard extends StatelessWidget {
-  const _QuoteCard({
+class RideQuoteCard extends StatelessWidget {
+  const RideQuoteCard({
+    super.key,
     required this.quote,
     required this.selected,
     required this.onTap,
+    this.compact = false,
   });
 
   final QuoteSummary quote;
   final bool selected;
   final VoidCallback onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    final name = quote.vehicleName ??
+    final name =
+        quote.vehicleName ??
         (quote.vehicleKey == 'MOTORBIKE' ? 'Xe máy' : 'Ô tô 4 chỗ');
     return Card(
-      color: selected
-          ? Theme.of(context).colorScheme.primaryContainer
-          : null,
+      color: selected ? Theme.of(context).colorScheme.primaryContainer : null,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Icon(
-                quote.vehicleKey == 'MOTORBIKE'
-                    ? Icons.two_wheeler_outlined
-                    : Icons.directions_car_outlined,
-                size: 34,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          padding: EdgeInsets.all(compact ? 12 : 16),
+          child: compact
+              ? _compactContent(context, name)
+              : Row(
                   children: [
-                    Text(name, style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${(quote.distanceMeters / 1000).toStringAsFixed(1)} km · '
-                      '${(quote.durationSeconds / 60).ceil()} phút',
+                    Icon(
+                      quote.vehicleKey == 'MOTORBIKE'
+                          ? Icons.two_wheeler_outlined
+                          : Icons.directions_car_outlined,
+                      size: 34,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${(quote.distanceMeters / 1000).toStringAsFixed(1)} km · '
+                            '${(quote.durationSeconds / 60).ceil()} phút',
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${quote.customerPayable.toStringAsFixed(0)} VND',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Icon(
+                          selected
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_off,
+                          color: selected
+                              ? Theme.of(context).colorScheme.primary
+                              : null,
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${quote.customerPayable.toStringAsFixed(0)} VND',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  Icon(
-                    selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                    color: selected
-                        ? Theme.of(context).colorScheme.primary
-                        : null,
-                  ),
-                ],
-              ),
-            ],
-          ),
         ),
       ),
+    );
+  }
+
+  Widget _compactContent(BuildContext context, String name) {
+    final colors = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              quote.vehicleKey == 'MOTORBIKE'
+                  ? Icons.two_wheeler_outlined
+                  : Icons.directions_car_outlined,
+              color: colors.primary,
+            ),
+            const Spacer(),
+            Icon(
+              selected ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: selected ? colors.primary : colors.onSurfaceVariant,
+              size: 18,
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+        const Spacer(),
+        Text(
+          '${quote.customerPayable.toStringAsFixed(0)} VND',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        Text(
+          '${(quote.durationSeconds / 60).ceil()} phút',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
     );
   }
 }

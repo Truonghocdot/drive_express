@@ -140,6 +140,26 @@ test('logs in an active user with phone and password', function () {
         ->assertJsonStructure(['token']);
 });
 
+test('returns a Vietnamese message after too many login attempts', function () {
+    $phone = '09'.str_pad((string) random_int(0, 99_999_999), 8, '0', STR_PAD_LEFT);
+    $payload = [
+        'phone' => $phone,
+        'password' => 'wrong-password',
+        'device_id' => 'rate-limit-device',
+        'app_type' => 'DRIVER_APP',
+        'platform' => 'ANDROID',
+    ];
+
+    foreach (range(1, 5) as $_) {
+        $this->postJson('/api/v1/auth/login', $payload)->assertUnprocessable();
+    }
+
+    $this->postJson('/api/v1/auth/login', $payload)
+        ->assertTooManyRequests()
+        ->assertJsonPath('message', 'Bạn đã thử quá nhiều lần. Vui lòng thử lại sau.')
+        ->assertJsonPath('code', 'TOO_MANY_ATTEMPTS');
+});
+
 test('rejects login when the account is not active', function (UserStatus $status) {
     $user = User::factory()->create([
         'status' => $status,

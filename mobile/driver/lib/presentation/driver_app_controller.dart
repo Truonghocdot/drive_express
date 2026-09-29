@@ -66,6 +66,42 @@ class DriverAppController extends ChangeNotifier {
   DriverOfferSummary? get activeOffer =>
       offers.where((offer) => offer.status == 'ACCEPTED').firstOrNull;
 
+  Future<NavigationRoute> calculateRoute(DriverOfferSummary offer) async {
+    final position = await refreshPosition();
+    if (position == null) {
+      throw StateError('Không lấy được vị trí hiện tại của tài xế.');
+    }
+    final api = goong;
+    if (api?.configured != true) {
+      throw const GoongNavigationException(
+        'Chưa cấu hình GOONG_API_KEY cho ứng dụng tài xế.',
+      );
+    }
+    final target =
+        offer.serviceType != 'HOURLY' &&
+            const {
+              'PICKED_UP',
+              'IN_DELIVERY',
+              'IN_TRIP',
+            }.contains(offer.serviceStatus)
+        ? NavigationCoordinate(
+            latitude: offer.dropoffLatitude,
+            longitude: offer.dropoffLongitude,
+          )
+        : NavigationCoordinate(
+            latitude: offer.pickupLatitude,
+            longitude: offer.pickupLongitude,
+          );
+    return api!.directions(
+      origin: NavigationCoordinate(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      ),
+      destination: target,
+      vehicle: offer.serviceType == 'DELIVERY' ? 'bike' : 'car',
+    );
+  }
+
   Future<void> prepareLocation() async {
     try {
       if (locationSource case final DeviceLocationSource source) {
@@ -74,7 +110,7 @@ class DriverAppController extends ChangeNotifier {
       currentPosition = await locationSource.current();
       locationError = null;
     } catch (exception) {
-      locationError = exception.toString();
+      locationError = _locationErrorMessage(exception);
     }
     if (!_disposed) notifyListeners();
   }
@@ -86,7 +122,7 @@ class DriverAppController extends ChangeNotifier {
       if (!_disposed) notifyListeners();
       return currentPosition;
     } catch (exception) {
-      locationError = exception.toString();
+      locationError = _locationErrorMessage(exception);
       if (!_disposed) notifyListeners();
       return null;
     }
@@ -614,11 +650,30 @@ class DriverAppController extends ChangeNotifier {
       if (exception is DriverApiException && exception.statusCode == 401) {
         await clearSession();
       }
-      error = exception.toString();
+      error = _requestErrorMessage(exception);
     } finally {
       if (showBusy) busy = false;
       notifyListeners();
     }
+  }
+
+  String _requestErrorMessage(Object exception) {
+    if (exception is DriverApiException && exception.statusCode == 429) {
+      return 'Bạn đã thử quá nhiều lần. Vui lòng thử lại sau.';
+    }
+    if (exception is TimeoutException) {
+      return 'Kết nối mất quá lâu. Vui lòng kiểm tra mạng và thử lại.';
+    }
+    if (exception is StateError) return exception.message.toString();
+    return exception.toString();
+  }
+
+  String _locationErrorMessage(Object exception) {
+    if (exception is TimeoutException) {
+      return 'Không thể lấy vị trí trong 12 giây. Hãy bật GPS và thử lại.';
+    }
+    if (exception is StateError) return exception.message.toString();
+    return 'Không thể lấy vị trí hiện tại. Hãy kiểm tra GPS và thử lại.';
   }
 
   @override

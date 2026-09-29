@@ -76,11 +76,21 @@ class AppServiceProvider extends ServiceProvider
         );
 
         RateLimiter::for('auth-login', function (Request $request): Limit {
-            return Limit::perMinute(5)->by($this->authenticationRateLimitKey($request));
+            return Limit::perMinute(5)
+                ->by($this->authenticationRateLimitKey($request))
+                ->response(fn (Request $request, array $headers) => response()->json([
+                    'message' => 'Bạn đã thử quá nhiều lần. Vui lòng thử lại sau.',
+                    'code' => 'TOO_MANY_ATTEMPTS',
+                ], 429, $headers));
         });
 
         RateLimiter::for('auth-otp', function (Request $request): Limit {
-            return Limit::perMinute(5)->by($this->authenticationRateLimitKey($request));
+            return Limit::perMinute(5)
+                ->by($this->authenticationRateLimitKey($request))
+                ->response(fn (Request $request, array $headers) => response()->json([
+                    'message' => 'Bạn đã thử quá nhiều lần. Vui lòng thử lại sau.',
+                    'code' => 'TOO_MANY_ATTEMPTS',
+                ], 429, $headers));
         });
 
         RateLimiter::for('quotes', function (Request $request): Limit {

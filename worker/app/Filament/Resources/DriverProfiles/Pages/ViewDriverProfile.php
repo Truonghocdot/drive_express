@@ -3,11 +3,13 @@
 namespace App\Filament\Resources\DriverProfiles\Pages;
 
 use App\Enums\DriverReviewStatus;
+use App\Enums\ServiceType;
 use App\Filament\Resources\DriverProfiles\DriverProfileResource;
 use App\Models\DriverProfile;
 use App\Models\User;
 use App\Services\Driver\DriverReviewService;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
@@ -41,6 +43,36 @@ class ViewDriverProfile extends ViewRecord
                     );
                     $this->refreshFormData(['review_status', 'availability_status', 'reviewed_at']);
                     Notification::make()->title('Đã phê duyệt tài xế')->success()->send();
+                }),
+            Action::make('addCapability')
+                ->label('Thêm dịch vụ')
+                ->form([
+                    Select::make('service_type')
+                        ->label('Dịch vụ')
+                        ->options(collect(ServiceType::cases())->mapWithKeys(
+                            fn (ServiceType $type): array => [$type->value => $type->getLabel()],
+                        )->all())
+                        ->required(),
+                    Select::make('vehicle_type_id')
+                        ->label('Loại xe đã duyệt')
+                        ->options(fn (): array => $this->driver()->vehicles()
+                            ->with('vehicleType')
+                            ->get()
+                            ->mapWithKeys(fn ($vehicle): array => [
+                                $vehicle->vehicle_type_id => $vehicle->vehicleType->name,
+                            ])
+                            ->all())
+                        ->required(),
+                ])
+                ->visible(fn (): bool => $this->driver()->review_status === DriverReviewStatus::Approved)
+                ->action(function (array $data, DriverReviewService $review): void {
+                    $review->addCapability(
+                        $this->driver(),
+                        $this->admin(),
+                        (int) $data['vehicle_type_id'],
+                        ServiceType::from((string) $data['service_type']),
+                    );
+                    Notification::make()->title('Đã thêm dịch vụ cho tài xế')->success()->send();
                 }),
             Action::make('reject')
                 ->label('Từ chối')

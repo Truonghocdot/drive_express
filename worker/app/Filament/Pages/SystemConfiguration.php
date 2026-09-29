@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Admin\PricingCatalogAdminService;
 use BackedEnum;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
@@ -31,7 +32,7 @@ class SystemConfiguration extends Page implements HasForms
 
     protected string $view = 'filament.pages.system-configuration';
 
-    /** @var array<string, int|float|string> */
+    /** @var array<string, bool|int|float|string> */
     public array $data = [];
 
     public static function canAccess(): bool
@@ -50,6 +51,7 @@ class SystemConfiguration extends Page implements HasForms
             'vietqr_bank_code' => $this->setting('finance.vietqr.bank_code', (string) config('finance.vietqr.bank_code', 'MB')),
             'vietqr_account_number' => $this->setting('finance.vietqr.account_number', (string) config('finance.vietqr.account_number', '')),
             'vietqr_account_name' => $this->setting('finance.vietqr.account_name', (string) config('finance.vietqr.account_name', '')),
+            'hourly_enabled' => $this->booleanSetting('features.hourly_enabled'),
         ]);
     }
 
@@ -104,6 +106,12 @@ class SystemConfiguration extends Page implements HasForms
                             ->maxLength(120),
                     ])
                     ->columns(3),
+                Section::make('Dịch vụ')
+                    ->schema([
+                        Toggle::make('hourly_enabled')
+                            ->label('Bật dịch vụ thuê giờ')
+                            ->helperText('Chỉ bật sau khi đã tạo bảng giá thuê giờ đang hoạt động.'),
+                    ]),
             ])
             ->statePath('data');
     }
@@ -135,5 +143,10 @@ class SystemConfiguration extends Page implements HasForms
         }
 
         return is_numeric($value) ? (float) $value : $default;
+    }
+
+    private function booleanSetting(string $key): bool
+    {
+        return SystemSetting::query()->find($key)?->value === true;
     }
 }

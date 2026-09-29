@@ -15,6 +15,9 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final recent = controller.history.take(2).toList(growable: false);
+    final active = controller.hasActiveRequest
+        ? controller.activeRequest
+        : null;
     return RefreshIndicator(
       onRefresh: () async {
         await controller.loadHistory();
@@ -23,7 +26,7 @@ class HomePage extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 30),
         children: [
-          if (controller.activeRequest case final request?) ...[
+          if (active case final request?) ...[
             _ActiveRequestCard(
               request: request,
               onTap: () => Navigator.push(

@@ -153,6 +153,10 @@ function titleFor(type: string): string {
     return 'Tài xế đã nhận đơn';
   }
 
+  if (type === 'DRIVER_OFFER_RECEIVED') {
+    return 'Có cuốc mới gần bạn';
+  }
+
   return 'New notification';
 }
 
@@ -171,6 +175,10 @@ function bodyFor(type: string): string {
 
   if (type === 'SERVICE_DRIVER_ASSIGNED') {
     return 'Tài xế đang đến điểm đón của bạn.';
+  }
+
+  if (type === 'DRIVER_OFFER_RECEIVED') {
+    return 'Mở ứng dụng để xem và nhận cuốc.';
   }
 
   return 'There is a new update in the app.';

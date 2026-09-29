@@ -37,6 +37,8 @@ abstract final class ClientTheme {
     ).copyWith(
       primary: const Color(0xFF8CDAB9),
       onPrimary: const Color(0xFF00382A),
+      primaryContainer: const Color(0xFF145642),
+      onPrimaryContainer: const Color(0xFFF0FFF7),
       secondary: const Color(0xFF6CF8BB),
       onSecondary: const Color(0xFF002113),
       surface: const Color(0xFF101B17),

@@ -17,7 +17,7 @@ class LoyaltyRewardInfolist
             TextEntry::make('service_scope')->badge(),
             TextEntry::make('valid_days'),
             TextEntry::make('stock'),
-            TextEntry::make('is_active')->boolean(),
+            TextEntry::make('is_active')->formatStateUsing(fn ($state) => $state ? 'Đang bán' : 'Ngừng bán'),
         ])->columns(2);
     }
 }

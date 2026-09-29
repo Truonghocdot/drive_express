@@ -57,6 +57,8 @@ class ClientAppController extends ChangeNotifier {
 
   BookingSession get session => _session;
   bool get authenticated => _session.token.isNotEmpty;
+  bool get hasActiveRequest =>
+      activeRequest != null && !isTerminal(activeRequest!.status);
   QuoteSummary? get quote => selectedQuote;
 
   String? vehicleIdForKey(String key) => vehicles
@@ -111,15 +113,16 @@ class ClientAppController extends ChangeNotifier {
     await _guard(() async {
       customerProfile = await accountGateway?.validateSession(_session);
       await _loadCatalog();
-      await _loadHistory();
       final lastId = await sessionStore?.readLastRequestId();
       if (lastId != null) {
         try {
           activeRequest = await gateway.loadServiceRequest(_session, lastId);
+          if (!hasActiveRequest) await _stopActiveRequestTracking();
         } on BookingApiException catch (exception) {
           if (exception.statusCode == 401) rethrow;
         }
       }
+      await _loadHistory();
       await _loadTracking();
       _startRealtime();
       _startPolling();
@@ -237,7 +240,15 @@ class ClientAppController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearQuotes() {
+    quotes = const [];
+    selectedQuote = null;
+    quoteDraft = null;
+    notifyListeners();
+  }
+
   Future<void> requestQuote(BookingDraft draft) async {
+    clearQuotes();
     await _guard(() async {
       quoteDraft = draft;
       quotes = draft.service == ServiceKind.drive
@@ -278,9 +289,13 @@ class ClientAppController extends ChangeNotifier {
         idempotencyKey: _createKey!,
       );
       _createKey = null;
-      await sessionStore?.writeLastRequestId(activeRequest!.id);
-      realtime?.watch(activeRequest!.id);
-      await _loadTracking();
+      if (hasActiveRequest) {
+        await sessionStore?.writeLastRequestId(activeRequest!.id);
+        realtime?.watch(activeRequest!.id);
+        await _loadTracking();
+      } else {
+        await _stopActiveRequestTracking();
+      }
       await _loadHistory();
       _startPolling();
     });
@@ -291,7 +306,12 @@ class ClientAppController extends ChangeNotifier {
     if (request == null) return;
     try {
       activeRequest = await gateway.loadServiceRequest(_session, request.id);
-      await _loadTracking();
+      if (hasActiveRequest) {
+        await _loadTracking();
+      } else {
+        await _stopActiveRequestTracking();
+        await _loadHistory();
+      }
       notifyListeners();
     } on BookingApiException catch (exception) {
       if (exception.statusCode == 401) await clearSession();
@@ -310,6 +330,7 @@ class ClientAppController extends ChangeNotifier {
         reasonCode: 'CUSTOMER_CHANGED_MIND',
       );
       _cancelKey = null;
+      await _stopActiveRequestTracking();
       await _loadHistory();
     });
   }
@@ -321,17 +342,26 @@ class ClientAppController extends ChangeNotifier {
       history = await (gateway as BookingHistoryGateway).loadServiceRequests(
         _session,
       );
-      activeRequest ??= history
+      if (!hasActiveRequest) {
+        await _stopActiveRequestTracking();
+      }
+      final nextActive = history
           .where((request) => !isTerminal(request.status))
           .firstOrNull;
+      if (nextActive != null) {
+        activeRequest = nextActive;
+        await sessionStore?.writeLastRequestId(nextActive.id);
+      }
     }
   }
 
   Future<void> selectHistoryRequest(ServiceRequestSummary request) async {
     await _guard(() async {
-      activeRequest = await gateway.loadServiceRequest(_session, request.id);
-      await sessionStore?.writeLastRequestId(request.id);
-      realtime?.watch(request.id);
+      final loaded = await gateway.loadServiceRequest(_session, request.id);
+      if (isTerminal(loaded.status)) return;
+      activeRequest = loaded;
+      await sessionStore?.writeLastRequestId(loaded.id);
+      realtime?.watch(loaded.id);
       await _loadTracking();
       _startPolling();
     });
@@ -339,9 +369,11 @@ class ClientAppController extends ChangeNotifier {
 
   Future<void> openServiceRequest(String requestId) async {
     await _guard(() async {
-      activeRequest = await gateway.loadServiceRequest(_session, requestId);
-      await sessionStore?.writeLastRequestId(requestId);
-      realtime?.watch(requestId);
+      final loaded = await gateway.loadServiceRequest(_session, requestId);
+      if (isTerminal(loaded.status)) return;
+      activeRequest = loaded;
+      await sessionStore?.writeLastRequestId(loaded.id);
+      realtime?.watch(loaded.id);
       await _loadTracking();
       _startPolling();
     });
@@ -546,15 +578,22 @@ class ClientAppController extends ChangeNotifier {
         unawaited(loadNotifications());
       },
     );
-    realtime!.watch(activeRequest?.id);
+    realtime!.watch(hasActiveRequest ? activeRequest!.id : null);
   }
 
   void _startPolling() {
     _snapshotTimer?.cancel();
+    if (!hasActiveRequest) return;
     _snapshotTimer = Timer.periodic(
       const Duration(seconds: 10),
       (_) => unawaited(refreshActiveRequest()),
     );
+  }
+
+  Future<void> _stopActiveRequestTracking() async {
+    _snapshotTimer?.cancel();
+    realtime?.watch(null);
+    await sessionStore?.clearLastRequestId();
   }
 
   Future<void> _loadTracking() async {

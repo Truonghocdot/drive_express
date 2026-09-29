@@ -7,6 +7,7 @@ use App\Enums\DriverDocumentType;
 use App\Enums\DriverReviewStatus;
 use App\Enums\ReviewableStatus;
 use App\Enums\RoleKey;
+use App\Enums\ServiceType;
 use App\Models\AuditLog;
 use App\Models\DriverProfile;
 use App\Models\LedgerAccount;
@@ -139,6 +140,62 @@ class DriverReviewService
             ])->save();
             $profile->capabilities()->update(['is_active' => false]);
             $this->audit($profile, $admin, 'DRIVER_SUSPENDED', $before, $reasonCode);
+
+            return $this->load($profile);
+        });
+    }
+
+    public function addCapability(
+        DriverProfile $profile,
+        User $admin,
+        int $vehicleTypeId,
+        ServiceType $serviceType,
+    ): DriverProfile {
+        return DB::transaction(function () use ($profile, $admin, $vehicleTypeId, $serviceType): DriverProfile {
+            $profile = DriverProfile::query()->lockForUpdate()->findOrFail($profile->id);
+            $before = $this->auditSnapshot($profile);
+
+            if ($profile->review_status !== DriverReviewStatus::Approved) {
+                $this->throwInvalidState();
+            }
+
+            $vehicle = $profile->vehicles()
+                ->where('vehicle_type_id', $vehicleTypeId)
+                ->where('status', ReviewableStatus::Approved)
+                ->with('vehicleType')
+                ->first();
+
+            if ($vehicle === null) {
+                throw ValidationException::withMessages([
+                    'vehicle_type_id' => ['Tài xế chưa có xe đã duyệt thuộc loại xe này.'],
+                ]);
+            }
+
+            if (in_array($serviceType, [ServiceType::Drive, ServiceType::Hourly], true)
+                && $vehicle->vehicleType->passenger_capacity === null) {
+                throw ValidationException::withMessages([
+                    'service_type' => ['Loại xe này không hỗ trợ dịch vụ chở khách hoặc thuê giờ.'],
+                ]);
+            }
+
+            if ($serviceType === ServiceType::Delivery && $vehicle->vehicleType->max_weight_kg === null) {
+                throw ValidationException::withMessages([
+                    'service_type' => ['Loại xe này không hỗ trợ giao hàng.'],
+                ]);
+            }
+
+            $profile->capabilities()->updateOrCreate(
+                [
+                    'vehicle_type_id' => $vehicleTypeId,
+                    'service_type' => $serviceType->value,
+                ],
+                [
+                    'is_active' => true,
+                    'approved_by' => $admin->id,
+                    'approved_at' => now(),
+                ],
+            );
+            $this->audit($profile, $admin, 'DRIVER_CAPABILITY_ADDED', $before);
 
             return $this->load($profile);
         });

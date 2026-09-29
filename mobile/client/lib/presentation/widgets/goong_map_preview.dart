@@ -108,6 +108,7 @@ class _GoongMapPreviewState extends State<GoongMapPreview> {
     if (map == null || !_styleReady || !mounted) return;
     await map.clearLines();
     await map.clearSymbols();
+    await map.clearCircles();
     final geometry = widget.route ?? [widget.pickup, widget.dropoff];
     if (geometry.length > 1) {
       await map.addLine(
@@ -121,40 +122,30 @@ class _GoongMapPreviewState extends State<GoongMapPreview> {
         ),
       );
     }
-    await map.addSymbol(
-      SymbolOptions(
-        geometry: LatLng(widget.pickup.latitude, widget.pickup.longitude),
-        textField: 'Điểm đón',
-        textColor: '#047857',
-        textHaloColor: '#FFFFFF',
-        textHaloWidth: 2,
-        textSize: 16,
-      ),
-    );
-    await map.addSymbol(
-      SymbolOptions(
-        geometry: LatLng(widget.dropoff.latitude, widget.dropoff.longitude),
-        textField: 'Điểm đến',
-        textColor: '#B42318',
-        textHaloColor: '#FFFFFF',
-        textHaloWidth: 2,
-        textSize: 16,
-      ),
-    );
+    await _addMarker(map, widget.pickup, color: '#047857', radius: 10);
+    await _addMarker(map, widget.dropoff, color: '#B42318', radius: 10);
     if (widget.current case final current?) {
-      await map.addSymbol(
-        SymbolOptions(
-          geometry: LatLng(current.latitude, current.longitude),
-          textField: 'Tài xế',
-          textColor: '#155EEF',
-          textHaloColor: '#FFFFFF',
-          textHaloWidth: 2,
-          textSize: 14,
-        ),
-      );
+      await _addMarker(map, current, color: '#155EEF', radius: 9);
     }
     await _fitCamera(map, geometry);
   }
+
+  Future<void> _addMarker(
+    MapLibreMapController map,
+    GoongCoordinate point, {
+    required String color,
+    required double radius,
+  }) => map.addCircle(
+    CircleOptions(
+      geometry: LatLng(point.latitude, point.longitude),
+      circleRadius: radius,
+      circleColor: color,
+      circleStrokeColor: '#FFFFFF',
+      circleStrokeWidth: 3,
+      circleOpacity: 1,
+      circleStrokeOpacity: 1,
+    ),
+  );
 
   Future<void> _fitCamera(
     MapLibreMapController map,
@@ -268,13 +259,17 @@ class _MapUnavailableCard extends StatelessWidget {
       height: 116,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFE7EFEA),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFC8D7D0)),
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Row(
         children: [
-          const Icon(Icons.map_outlined, color: Color(0xFF146B52), size: 30),
+          Icon(
+            Icons.map_outlined,
+            color: Theme.of(context).colorScheme.primary,
+            size: 30,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(message, style: Theme.of(context).textTheme.bodyMedium),

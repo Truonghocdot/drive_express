@@ -9,11 +9,14 @@ use App\Filament\Resources\SystemSettings\Pages\CreateSystemSetting;
 use App\Models\PricingRule;
 use App\Models\Quote;
 use App\Models\Role;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\VehicleType;
+use App\Services\Admin\PricingCatalogAdminService;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\VehicleTypeSeeder;
 use Filament\Facades\Filament;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
 function actingAsPricingAdmin(): User
@@ -107,6 +110,14 @@ test('creates a numeric pricing system setting through its Filament tab', functi
 
 test('saves all pricing settings from the standalone configuration page', function () {
     actingAsPricingAdmin();
+    $vehicle = VehicleType::query()->where('unique_key', 'MOTORBIKE')->firstOrFail();
+    PricingRule::factory()->create([
+        'service_type' => ServiceType::Hourly,
+        'vehicle_type_id' => $vehicle->id,
+        'hourly_rate' => 60_000,
+        'minimum_duration_hours' => 1,
+        'maximum_duration_hours' => 12,
+    ]);
 
     Livewire::test(SystemConfiguration::class)
         ->fillForm([
@@ -116,6 +127,7 @@ test('saves all pricing settings from the standalone configuration page', functi
             'vietqr_bank_code' => 'vietinbank',
             'vietqr_account_number' => '113366668888',
             'vietqr_account_name' => 'DRIVE PAYMENTS',
+            'hourly_enabled' => true,
         ])
         ->call('save')
         ->assertHasNoFormErrors();
@@ -135,4 +147,19 @@ test('saves all pricing settings from the standalone configuration page', functi
         'key' => 'finance.vietqr.account_name',
         'value' => '"DRIVE PAYMENTS"',
     ]);
+    expect(SystemSetting::query()->findOrFail('features.hourly_enabled')->value)->toBeTrue();
+});
+
+test('requires hourly pricing before enabling hourly service', function () {
+    $admin = actingAsPricingAdmin();
+
+    expect(fn () => app(PricingCatalogAdminService::class)->saveSystemSettings([
+        'quote_ttl_seconds' => 300,
+        'rounding_unit' => 1_000,
+        'float_tolerance' => 0.01,
+        'vietqr_bank_code' => 'MB',
+        'vietqr_account_number' => '0123456789',
+        'vietqr_account_name' => 'DRIVE PAYMENTS',
+        'hourly_enabled' => true,
+    ], $admin))->toThrow(ValidationException::class);
 });

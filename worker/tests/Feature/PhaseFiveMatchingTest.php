@@ -160,6 +160,15 @@ test('creates a matching batch only for eligible nearby drivers', function () {
         'status' => DriverOfferStatus::Pending->value,
     ]);
     $this->assertDatabaseHas('outbox_events', ['event_type' => 'OFFER_CREATED']);
+    $this->assertDatabaseHas('notifications', [
+        'user_id' => $eligible['user']->id,
+        'type' => 'DRIVER_OFFER_RECEIVED',
+        'data->service_request_id' => $setup['request']->public_id,
+    ]);
+    $this->assertDatabaseHas('outbox_events', [
+        'event_type' => 'NOTIFICATION_CREATED',
+        'payload->type' => 'DRIVER_OFFER_RECEIVED',
+    ]);
 });
 
 test('accepting the same offer twice is idempotent and creates one assignment', function () {

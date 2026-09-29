@@ -395,17 +395,24 @@ class AppNotificationSummary {
     required this.id,
     required this.type,
     required this.isRead,
+    this.title,
+    this.body,
   });
 
   final String id;
   final String type;
   final bool isRead;
+  final String? title;
+  final String? body;
 
   factory AppNotificationSummary.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] as Map<String, dynamic>?;
     return AppNotificationSummary(
       id: json['id'] as String,
       type: json['type'] as String,
       isRead: json['read_at'] != null,
+      title: data?['title']?.toString(),
+      body: data?['body']?.toString(),
     );
   }
 }

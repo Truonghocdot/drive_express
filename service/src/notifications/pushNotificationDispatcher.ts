@@ -8,15 +8,21 @@ export class PushNotificationDispatcher {
   public constructor(
     private readonly worker: NotificationClient,
     private readonly sender: PushSender,
-    private readonly logger: Pick<Console, 'error' | 'warn'> = console,
+    private readonly logger: Pick<Console, 'error' | 'warn' | 'info'> = console,
+    private readonly debug = false,
   ) {}
 
   public async dispatch(event: WorkerEventEnvelope): Promise<void> {
-    if (!this.sender.enabled || event.event_type !== 'NOTIFICATION_CREATED') {
+    if (event.event_type !== 'NOTIFICATION_CREATED') {
+      return;
+    }
+    if (!this.sender.enabled) {
+      this.trace('skip: Firebase credentials are not configured', event);
       return;
     }
 
     if (this.seenEventIds.has(event.event_id)) {
+      this.trace('skip: duplicate event', event);
       return;
     }
     this.seenEventIds.add(event.event_id);
@@ -28,8 +34,10 @@ export class PushNotificationDispatcher {
     }
 
     try {
+      this.trace(`lookup notification ${notificationId}`, event);
       const notification = await this.worker.getDispatchPayload(notificationId);
       if (!notification || notification.devices.length === 0) {
+        this.trace(`skip: notification ${notificationId} has no active device`, event);
         return;
       }
 
@@ -46,10 +54,19 @@ export class PushNotificationDispatcher {
             this.logger.warn(`Failed to revoke invalid FCM token: ${errorMessage(error)}`);
           }
         }));
+        this.trace(
+          `sent ${notification.id} to ${device.appType}: success=${result.successCount}, failure=${result.failureCount}, invalid=${result.invalidTokens.length}`,
+          event,
+        );
       }
     } catch (error) {
       this.logger.error(`Push notification dispatch failed: ${errorMessage(error)}`);
     }
+  }
+
+  private trace(message: string, event: WorkerEventEnvelope): void {
+    if (!this.debug) return;
+    this.logger.info(`[push] event=${event.event_id} type=${event.event_type} ${message}`);
   }
 }
 

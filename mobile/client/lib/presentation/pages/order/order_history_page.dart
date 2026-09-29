@@ -88,7 +88,9 @@ class _OrderHistoryPageState extends State<OrderHistoryPage>
         .where((request) => !widget.controller.isTerminal(request.status))
         .toList();
     final active = widget.controller.activeRequest;
-    if (active != null && !requests.any((request) => request.id == active.id)) {
+    if (active != null &&
+        !widget.controller.isTerminal(active.status) &&
+        !requests.any((request) => request.id == active.id)) {
       requests.insert(0, active);
     }
     return _list(requests, active: true);

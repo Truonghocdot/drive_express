@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:driver/api/goong_navigation_api.dart';
@@ -58,6 +59,28 @@ void main() {
         vehicle: 'car',
       ),
       throwsA(isA<GoongNavigationException>()),
+    );
+  });
+
+  test('turns a directions timeout into a Vietnamese error', () async {
+    final api = GoongNavigationApi(
+      apiKey: 'driver-key',
+      client: MockClient((_) async => throw TimeoutException('timed out')),
+    );
+
+    await expectLater(
+      api.directions(
+        origin: const NavigationCoordinate(latitude: 10, longitude: 106),
+        destination: const NavigationCoordinate(latitude: 11, longitude: 107),
+        vehicle: 'car',
+      ),
+      throwsA(
+        isA<GoongNavigationException>().having(
+          (error) => error.toString(),
+          'message',
+          'Không thể tải tuyến đường. Vui lòng kiểm tra mạng và thử lại.',
+        ),
+      ),
     );
   });
 }

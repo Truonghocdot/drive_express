@@ -3,8 +3,9 @@ import 'package:client/booking_app.dart';
 import 'package:client/api/session_store.dart';
 import 'package:client/api/booking_realtime.dart';
 import 'package:client/api/goong_location_api.dart';
+import 'package:client/presentation/client_app_controller.dart';
 import 'package:client/presentation/pages/order/create_order_page.dart';
-import 'package:client/presentation/pages/order/ride_quote_selection_page.dart';
+import 'package:client/presentation/pages/order/order_checkout_page.dart';
 import 'package:client/presentation/pages/profile/notifications_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,6 +27,51 @@ void main() {
     await tester.tap(find.byKey(const Key('customer-notifications-button')));
     await tester.pumpAndSettle();
     expect(find.byType(NotificationsPage), findsOneWidget);
+  });
+
+  test('wallet payment failure does not reuse a completed request', () async {
+    final gateway = FakeBookingGateway()..rejectWalletPayment = true;
+    final controller = ClientAppController(
+      gateway: gateway,
+      initialSession: const BookingSession(
+        baseUrl: 'http://localhost/api/v1',
+        token: 'test-token',
+        vehicleTypeId: 'vehicle-uuid',
+      ),
+    );
+    controller.activeRequest = const ServiceRequestSummary(
+      id: 'completed-request',
+      service: ServiceKind.delivery,
+      status: 'COMPLETED',
+      paymentMethod: PaymentChoice.wallet,
+      customerPayable: 18000,
+    );
+    await controller.requestQuote(
+      const BookingDraft(
+        service: ServiceKind.delivery,
+        pickup: LocationDraft(
+          address: 'Pickup',
+          latitude: 10.77,
+          longitude: 106.68,
+        ),
+        dropoff: LocationDraft(
+          address: 'Dropoff',
+          latitude: 10.78,
+          longitude: 106.69,
+        ),
+        goodsType: 'GENERAL',
+        weightKg: 1,
+        passengerCount: 1,
+      ),
+    );
+
+    await controller.createRequest(
+      payment: PaymentChoice.wallet,
+      payer: PayerChoice.orderer,
+    );
+
+    expect(controller.error, contains('Ví không đủ số dư'));
+    expect(controller.hasActiveRequest, isFalse);
   });
 
   testWidgets('logs in and loads the vehicle catalog', (tester) async {
@@ -127,50 +173,64 @@ void main() {
     expect(gateway.cancelCalls, 1);
   });
 
-  testWidgets('ride flow opens parallel motorbike and car quotes', (tester) async {
-    await tester.pumpWidget(
-      BookingApp(
-        gateway: FakeBookingGateway(),
-        goong: TestGoongLocationApi(),
-        initialSession: const BookingSession(
-          baseUrl: 'http://localhost/api/v1',
-          token: 'test-token',
-          vehicleTypeId: 'vehicle-uuid',
+  testWidgets(
+    'ride flow shows vehicle prices after both locations are chosen',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final gateway = FakeBookingGateway();
+      await tester.pumpWidget(
+        BookingApp(
+          gateway: gateway,
+          goong: TestGoongLocationApi(),
+          initialSession: const BookingSession(
+            baseUrl: 'http://localhost/api/v1',
+            token: 'test-token',
+            vehicleTypeId: 'vehicle-uuid',
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Đặt xe'));
-    await tester.pumpAndSettle();
-    expect(find.byType(CreateOrderPage), findsOneWidget);
-    await tester.enterText(
-      find.descendant(
-        of: find.byKey(const Key('pickup-location-field')),
-        matching: find.byType(TextField),
-      ),
-      'Pickup',
-    );
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.descendant(
-        of: find.byKey(const Key('dropoff-location-field')),
-        matching: find.byType(TextField),
-      ),
-      'Dropoff',
-    );
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView).last, const Offset(0, -500));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.byKey(const Key('quote-button')));
-    await tester.tap(find.byKey(const Key('quote-button')));
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Đặt xe'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CreateOrderPage), findsOneWidget);
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const Key('pickup-location-field')),
+          matching: find.byType(TextField),
+        ),
+        'Pickup',
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const Key('dropoff-location-field')),
+          matching: find.byType(TextField),
+        ),
+        'Dropoff',
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
 
-    expect(find.byType(RideQuoteSelectionPage), findsOneWidget);
-    expect(find.text('Xe máy'), findsOneWidget);
-    expect(find.text('Ô tô 4 chỗ'), findsOneWidget);
-  });
+      expect(find.text('Xe máy'), findsOneWidget);
+      expect(find.text('Ô tô 4 chỗ'), findsOneWidget);
+      expect(find.text('Số hành khách'), findsNothing);
+      expect(gateway.quoteCalls, 1);
+
+      await tester.tap(find.byKey(const Key('ride-quote-bike-quote')));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(ListView).last, const Offset(0, -500));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('continue-button')));
+      await tester.tap(find.byKey(const Key('continue-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(OrderCheckoutPage), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'restores the most recent request and clears the session on logout',
@@ -250,6 +310,12 @@ void main() {
     gateway.snapshotStatus = 'COMPLETED';
     realtime.reconnected();
     await tester.pumpAndSettle();
+    expect(realtime.watchedRequest, isNull);
+    await tester.tap(find.text('Hoạt động').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Chưa có chuyến đang chạy'), findsOneWidget);
+    await tester.tap(find.text('Lịch sử'));
+    await tester.pumpAndSettle();
     expect(find.text('Đã hoàn thành'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
@@ -298,24 +364,28 @@ class TestGoongLocationApi extends GoongLocationApi {
 
 class FakeBookingSessionStore implements BookingSessionStore {
   bool cleared = false;
+  String? lastRequestId = 'request-uuid';
 
   @override
   Future<String?> readToken() async => 'test-token';
   @override
-  Future<String?> readLastRequestId() async => 'request-uuid';
+  Future<String?> readLastRequestId() async => lastRequestId;
   @override
   Future<void> writeToken(String token) async {}
   @override
-  Future<void> writeLastRequestId(String id) async {}
+  Future<void> writeLastRequestId(String id) async => lastRequestId = id;
+  @override
+  Future<void> clearLastRequestId() async => lastRequestId = null;
   @override
   Future<void> clear() async => cleared = true;
 }
 
-class FakeBookingGateway implements BookingGateway {
+class FakeBookingGateway implements BookingGateway, BookingHistoryGateway {
   int loginCalls = 0;
   int quoteCalls = 0;
   int createCalls = 0;
   int cancelCalls = 0;
+  bool rejectWalletPayment = false;
   String snapshotStatus = 'SEARCHING_DRIVER';
 
   @override
@@ -402,6 +472,9 @@ class FakeBookingGateway implements BookingGateway {
     String? passengerPhone,
   }) async {
     createCalls++;
+    if (rejectWalletPayment && payment == PaymentChoice.wallet) {
+      throw const BookingApiException('Ví không đủ số dư để thanh toán.');
+    }
     return ServiceRequestSummary(
       id: 'request-uuid',
       service: quote.service,
@@ -419,6 +492,7 @@ class FakeBookingGateway implements BookingGateway {
     required String reasonCode,
   }) async {
     cancelCalls++;
+    snapshotStatus = 'CANCELLED';
     return ServiceRequestSummary(
       id: serviceRequest.id,
       service: serviceRequest.service,
@@ -441,6 +515,19 @@ class FakeBookingGateway implements BookingGateway {
       customerPayable: 18000,
     );
   }
+
+  @override
+  Future<List<ServiceRequestSummary>> loadServiceRequests(
+    BookingSession session,
+  ) async => [
+    ServiceRequestSummary(
+      id: 'request-uuid',
+      service: ServiceKind.delivery,
+      status: snapshotStatus,
+      paymentMethod: PaymentChoice.wallet,
+      customerPayable: 18000,
+    ),
+  ];
 
   @override
   Future<WalletSummary> loadWallet(BookingSession session) async {

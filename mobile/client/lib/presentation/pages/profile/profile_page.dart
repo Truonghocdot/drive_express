@@ -75,7 +75,7 @@ class ProfilePage extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Card(
-          color: colors.primary,
+          color: colors.primaryContainer,
           child: InkWell(
             onTap: () => _wallet(context),
             borderRadius: BorderRadius.circular(16),
@@ -90,12 +90,14 @@ class ProfilePage extends StatelessWidget {
                       Text(
                         'Số dư ví lạnh',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colors.onPrimary.withValues(alpha: .82),
+                          color: colors.onPrimaryContainer.withValues(
+                            alpha: .82,
+                          ),
                         ),
                       ),
                       Icon(
                         Icons.visibility_outlined,
-                        color: colors.onPrimary.withValues(alpha: .88),
+                        color: colors.onPrimaryContainer.withValues(alpha: .88),
                         size: 18,
                       ),
                     ],
@@ -106,7 +108,7 @@ class ProfilePage extends StatelessWidget {
                         ? '—'
                         : '${controller.wallet!.available.toStringAsFixed(0)} đ',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: colors.onPrimary,
+                      color: colors.onPrimaryContainer,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -226,7 +228,7 @@ class ProfilePage extends StatelessWidget {
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        color: colors.onPrimary.withValues(alpha: .18),
+        color: colors.onPrimaryContainer.withValues(alpha: .14),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -238,12 +240,12 @@ class ProfilePage extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, color: colors.onPrimary, size: 18),
+                  Icon(icon, color: colors.onPrimaryContainer, size: 18),
                   const SizedBox(width: 6),
                   Text(
                     label,
                     style: TextStyle(
-                      color: colors.onPrimary,
+                      color: colors.onPrimaryContainer,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -408,7 +410,12 @@ class ProfilePage extends StatelessWidget {
                     ? Icons.notifications_none
                     : Icons.notifications_active_outlined,
               ),
-              title: Text(formatClientValue(notification.type)),
+              title: Text(
+                notification.title ?? formatClientValue(notification.type),
+              ),
+              subtitle: notification.body == null
+                  ? null
+                  : Text(notification.body!),
               trailing: notification.isRead
                   ? null
                   : IconButton(

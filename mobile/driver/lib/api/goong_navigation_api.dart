@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -57,7 +58,12 @@ class GoongNavigationApi {
     });
     final response = await _client
         .get(uri)
-        .timeout(const Duration(seconds: 12));
+        .timeout(const Duration(seconds: 12))
+        .onError<TimeoutException>((_, _) {
+          throw const GoongNavigationException(
+            'Không thể tải tuyến đường. Vui lòng kiểm tra mạng và thử lại.',
+          );
+        });
     final decoded = response.body.isEmpty
         ? const <String, dynamic>{}
         : jsonDecode(response.body);
