@@ -42,11 +42,56 @@ test('maps and caches a Goong direction response', function () {
         ->and($first->durationSeconds)->toBe(900)
         ->and($first->encodedPolyline)->toBe('polyline')
         ->and($second)->toEqual($first);
+    expect(Cache::get(goongRouteCacheKey($origin, $destination, 'bike')))->toBeArray();
     Http::assertSentCount(1);
     Http::assertSent(fn (Request $request): bool => $request['vehicle'] === 'bike'
         && $request['origin'] === '10.773000,106.704000'
         && $request['api_key'] === 'test-key');
 });
+
+test('replaces a stale object value in the route cache', function () {
+    config()->set([
+        'services.goong.base_url' => 'https://rsapi.goong.io',
+        'services.goong.api_key' => 'test-key',
+        'services.goong.cache_ttl_seconds' => 300,
+        'services.goong.vehicle_mapping.MOTORBIKE' => 'bike',
+    ]);
+    Cache::flush();
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://rsapi.goong.io/Direction*' => Http::response([
+            'routes' => [[
+                'legs' => [[
+                    'distance' => ['value' => 1_500],
+                    'duration' => ['value' => 360],
+                ]],
+            ]],
+        ]),
+    ]);
+    $origin = new Coordinates(10.773, 106.704);
+    $destination = new Coordinates(10.780, 106.690);
+    $cacheKey = goongRouteCacheKey($origin, $destination, 'bike');
+    Cache::put(
+        $cacheKey,
+        unserialize('O:17:"Missing\\RouteData":0:{}', ['allowed_classes' => false]),
+        300,
+    );
+
+    $route = app(GoongMapProvider::class)->route($origin, $destination, 'MOTORBIKE');
+
+    expect($route->distanceMeters)->toBe(1_500.0)
+        ->and(Cache::get($cacheKey))->toBeArray();
+    Http::assertSentCount(1);
+});
+
+function goongRouteCacheKey(Coordinates $origin, Coordinates $destination, string $vehicle): string
+{
+    return 'maps:goong:route:'.hash('sha256', implode('|', [
+        $origin->toProviderString(),
+        $destination->toProviderString(),
+        $vehicle,
+    ]));
+}
 
 test('rejects a Goong response without a usable route', function () {
     config()->set([

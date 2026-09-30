@@ -31,10 +31,49 @@ class GoongMapProvider implements MapProvider
             $vehicle,
         ]));
 
-        return Cache::remember(
+        $cached = Cache::get($cacheKey);
+        $cachedRoute = $this->routeFromCache($cached);
+
+        if ($cachedRoute !== null) {
+            return $cachedRoute;
+        }
+
+        if ($cached !== null) {
+            Cache::forget($cacheKey);
+        }
+
+        $route = $this->requestRoute($origin, $destination, $vehicle, $apiKey);
+        Cache::put(
             $cacheKey,
+            $route->toArray(),
             (int) config('services.goong.cache_ttl_seconds', 300),
-            fn (): RouteResult => $this->requestRoute($origin, $destination, $vehicle, $apiKey),
+        );
+
+        return $route;
+    }
+
+    private function routeFromCache(mixed $value): ?RouteResult
+    {
+        if (! is_array($value)
+            || ! is_string($value['provider'] ?? null)
+            || ! is_numeric($value['distance_meters'] ?? null)
+            || ! is_numeric($value['duration_seconds'] ?? null)
+            || ! is_array($value['metadata'] ?? [])) {
+            return null;
+        }
+
+        $encodedPolyline = $value['encoded_polyline'] ?? null;
+
+        if ($encodedPolyline !== null && ! is_string($encodedPolyline)) {
+            return null;
+        }
+
+        return new RouteResult(
+            provider: $value['provider'],
+            distanceMeters: (float) $value['distance_meters'],
+            durationSeconds: (int) $value['duration_seconds'],
+            encodedPolyline: $encodedPolyline,
+            metadata: $value['metadata'] ?? [],
         );
     }
 
