@@ -18,7 +18,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   void initState() {
     super.initState();
-    unawaited(widget.controller.loadNotifications());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(widget.controller.loadNotifications());
+    });
   }
 
   @override
